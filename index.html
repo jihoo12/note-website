@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>textarea with Connections</title>
+    <title>textarea with Connections & MathJax</title>
     <style>
         body {
             background-color: #f0f2f5;
@@ -80,7 +80,6 @@
             transition: background-color 0.2s;
         }
         
-        /* Highlight handles when system is in drawing mode */
         body.drawing-mode .drag-handle {
             background-color: #a6d8ff;
             cursor: cell;
@@ -93,33 +92,76 @@
             letter-spacing: 2px;
         }
 
-        textarea {
+        /* Wrapper to constrain both textarea and preview to the same size */
+        .editor-wrapper {
+            position: relative;
             width: 300px;
             height: 150px;
+        }
+
+        textarea, .tex-preview {
+            width: 100%;
+            height: 100%;
             border: 1px solid #ccc;
             border-radius: 4px;
             padding: 10px;
             box-sizing: border-box;
-            resize: both; 
             font-size: 14px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        textarea {
+            resize: both; 
             display: block;
+            z-index: 2;
+            background: transparent;
         }
         
         textarea:focus {
             outline: 2px solid #0078d4;
+            background: #ffffff;
         }
 
-        /* SVG layer for drawing connections */
+        /* Preview layer sits behind textarea unless activated */
+        .tex-preview {
+            background: #ffffff;
+            overflow-y: auto;
+            white-space: normal;
+            word-break: break-all;
+            z-index: 1;
+            pointer-events: none; /* Let clicks pass through to textarea when hidden */
+        }
+
+        /* When textarea loses focus, preview moves to the front */
+        .draggable-container:not(.editing) .tex-preview {
+            z-index: 3;
+            pointer-events: auto; /* Allow scrolling/selection in preview mode */
+        }
+
         #svg-canvas {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none; /* Allows clicks to pass through to elements underneath */
+            pointer-events: none; 
             z-index: 0;
         }
     </style>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
 </head>
 <body>
 
@@ -139,11 +181,17 @@
     <div id="workspace">
         <div class="draggable-container" style="top: 30%; left: 20%;">
             <div class="drag-handle"></div>
-            <textarea placeholder="Drag from handle to connect..."></textarea>
+            <div class="editor-wrapper">
+                <textarea placeholder="Type TeX here (e.g., $E=mc^2$) and click outside..."></textarea>
+                <div class="tex-preview"></div>
+            </div>
         </div>
         <div class="draggable-container" style="top: 30%; left: 60%;">
             <div class="drag-handle"></div>
-            <textarea placeholder="Type something here..."></textarea>
+            <div class="editor-wrapper">
+                <textarea placeholder="Type TeX here (e.g., $$\int_0^\infty x^2 dx$$)..."></textarea>
+                <div class="tex-preview"></div>
+            </div>
         </div>
     </div>
 
@@ -157,18 +205,79 @@
         let offsetX = 0;
         let offsetY = 0;
 
-        // State variables for managing line drawing
         let isDrawingMode = false;
-        let connections = []; // Array tracking [{from: element, to: element, path: svgElement}]
+        let connections = []; 
         let activeLine = null;
         let startContainer = null;
 
-        // --- Helper: Generate unique IDs for new containers ---
         function generateId() {
             return 'node_' + Math.random().toString(36).substr(2, 9);
         }
-        // Assign IDs to existing default textareas
-        document.querySelectorAll('.draggable-container').forEach(el => el.id = generateId());
+
+        // --- MathJax Live Preview Logic ---
+        function renderMath(container) {
+            const textarea = container.querySelector('textarea');
+            const preview = container.querySelector('.tex-preview');
+            
+            // Clean/format text content (replace line breaks with html breaks for formatting)
+            let rawText = textarea.value;
+            if(!rawText.trim()) {
+                preview.innerHTML = `<span style="color:#aaa;">${textarea.placeholder}</span>`;
+                return;
+            }
+            
+            preview.innerHTML = rawText.replace(/\n/g, '<br>');
+
+            // Tell MathJax to typeset the specific preview element
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                MathJax.typesetPromise([preview]).then(() => {
+                    // Lines might need updating if math container expanded vertically
+                    updateAllConnections();
+                });
+            }
+        }
+
+        // --- Setup Editor Listeners ---
+        function attachEditorEvents(container) {
+            container.id = generateId();
+            const textarea = container.querySelector('textarea');
+            const preview = container.querySelector('.tex-preview');
+
+            // Enter editing mode on click
+            textarea.addEventListener('focus', () => {
+                container.classList.add('editing');
+            });
+
+            // Return to preview mode on blur and compile MathJax
+            textarea.addEventListener('blur', () => {
+                container.classList.remove('editing');
+                renderMath(container);
+            });
+
+            // Also allow clicking on preview to re-edit
+            preview.addEventListener('click', () => {
+                container.classList.add('editing');
+                textarea.focus();
+            });
+
+            // Synchronize dimensions dynamically if user resizes the box
+            textarea.addEventListener('pointerdown', () => {
+                // Track resize via standard MutationObserver or simple interval while clicking
+                const checkResize = setInterval(() => {
+                    preview.style.width = textarea.style.width;
+                    preview.style.height = textarea.style.height;
+                    updateAllConnections();
+                }, 50);
+                
+                document.addEventListener('pointerup', () => clearInterval(checkResize), { once: true });
+            });
+            
+            // Generate initial empty placeholder text
+            renderMath(container);
+        }
+
+        // Initialize default containers
+        document.querySelectorAll('.draggable-container').forEach(el => attachEditorEvents(el));
 
         // --- Toggle Connection Mode ---
         toggleLineBtn.addEventListener("click", () => {
@@ -194,11 +303,10 @@
             startContainer = null;
         }
 
-        // --- 1. Create New Textarea Function ---
+        // --- Create New Textarea Function ---
         addBtn.addEventListener("click", () => {
             const newContainer = document.createElement("div");
             newContainer.className = "draggable-container";
-            newContainer.id = generateId();
             
             const randomTop = Math.floor(Math.random() * 40) + 25; 
             const randomLeft = Math.floor(Math.random() * 40) + 25; 
@@ -207,16 +315,18 @@
 
             newContainer.innerHTML = `
                 <div class="drag-handle"></div>
-                <textarea placeholder="Type something here..."></textarea>
+                <div class="editor-wrapper">
+                    <textarea placeholder="Type TeX here..."></textarea>
+                    <div class="tex-preview"></div>
+                </div>
             `;
 
             workspace.appendChild(newContainer);
+            attachEditorEvents(newContainer);
         });
 
-        // --- 2. Calculation helper to update paths dynamically ---
+        // --- Calculation helper to update paths dynamically ---
         function getCenterCoords(element) {
-            const rect = element.getBoundingClientRect();
-            // Using the center coordinates of the drag handle bar for lines mapping
             const handle = element.querySelector('.drag-handle');
             const handleRect = handle.getBoundingClientRect();
             return {
@@ -226,12 +336,8 @@
         }
 
         function updateLinePath(lineElement, startX, startY, endX, endY) {
-            // Draw a smooth bezier curve between components
             const deltaX = Math.abs(endX - startX) * 0.5;
             const controlX1 = startX + (endX > startX ? deltaX : -deltaX);
-            const controlX2 = endY > startY ? endX : endX; 
-            
-            // Simple straight line fallback or subtle curve
             lineElement.setAttribute("d", `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX1} ${endY}, ${endX} ${endY}`);
         }
 
@@ -243,14 +349,13 @@
             });
         }
 
-        // --- 3. Global Dragging & Drawing Logic (Unified Event Listeners) ---
+        // --- Global Dragging & Drawing Logic ---
         document.addEventListener("mousedown", (e) => {
             if (!e.target.classList.contains("drag-handle")) return;
             
             const container = e.target.closest(".draggable-container");
 
             if (isDrawingMode) {
-                // START DRAWING LINE
                 startContainer = container;
                 const startCoords = getCenterCoords(startContainer);
 
@@ -258,11 +363,10 @@
                 activeLine.setAttribute("stroke", "#0078d4");
                 activeLine.setAttribute("stroke-width", "3");
                 activeLine.setAttribute("fill", "none");
-                activeLine.setAttribute("stroke-dasharray", "4 4"); // Dashed while plotting
+                activeLine.setAttribute("stroke-dasharray", "4 4"); 
                 activeLine.setAttribute("marker-end", "url(#arrow)");
                 svgCanvas.appendChild(activeLine);
             } else {
-                // STANDARD ELEMENT DRAG
                 currentDraggable = container;
                 offsetX = e.clientX - currentDraggable.getBoundingClientRect().left;
                 offsetY = e.clientY - currentDraggable.getBoundingClientRect().top;
@@ -274,14 +378,12 @@
         });
 
         document.addEventListener("mousemove", (e) => {
-            // Case A: Drawing a line tracking cursor
             if (isDrawingMode && activeLine && startContainer) {
                 const start = getCenterCoords(startContainer);
                 updateLinePath(activeLine, start.x, start.y, e.clientX, e.clientY);
                 return;
             }
 
-            // Case B: Moving an element panel
             if (!currentDraggable) return;
 
             let x = e.clientX - offsetX;
@@ -293,19 +395,16 @@
             currentDraggable.style.left = `${x}px`;
             currentDraggable.style.top = `${y}px`;
 
-            // Dynamically redraw connected paths on drag
             updateAllConnections();
         });
 
         document.addEventListener("mouseup", (e) => {
-            // Case A: Completing line generation
             if (isDrawingMode && activeLine) {
                 const targetHandle = e.target.classList.contains("drag-handle") ? e.target : null;
                 const endContainer = targetHandle ? targetHandle.closest(".draggable-container") : null;
 
-                // Validate link conditions: Must hit another valid box and cannot self-loop
                 if (endContainer && endContainer !== startContainer) {
-                    activeLine.setAttribute("stroke-dasharray", "none"); // Solidify line
+                    activeLine.setAttribute("stroke-dasharray", "none"); 
                     
                     connections.push({
                         from: startContainer,
@@ -315,7 +414,7 @@
                     
                     updateAllConnections();
                 } else {
-                    activeLine.remove(); // Invalid drop targets trash the temporary path 
+                    activeLine.remove(); 
                 }
                 
                 activeLine = null;
@@ -323,16 +422,13 @@
                 return;
             }
 
-            // Case B: Finishing drag drop
             if (currentDraggable) {
                 currentDraggable.style.opacity = "1";
                 currentDraggable = null;
             }
         });
 
-        // Window resize adjustment handler
         window.addEventListener('resize', updateAllConnections);
     </script>
-
 </body>
 </html>
