@@ -44,10 +44,9 @@ export function renderMath(container: HTMLElement): void {
     return;
   }
 
-  // Wrap bare TeX in display-math delimiters if the user hasn't already added
-  // any themselves (\[…\], \(…\), $…$, \begin{…}).
-  const hasDelimiters = /(\\\[|\\\(|\$|\\begin\s*\{)/.test(raw);
-  preview.innerHTML = hasDelimiters ? raw : `\\[${raw}\\]`;
+  // Set content as-is. MathJax will only render text inside explicit delimiters
+  // ($…$, $$…$$, \(…\), \[…\], \begin{…}); plain text is left untouched.
+  preview.innerHTML = raw;
 
   if (typeof window.MathJax?.typesetPromise === 'function') {
     // Fast path: engine already initialised.
