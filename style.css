@@ -1,144 +1,445 @@
-body {
-    background-color: #f0f2f5;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    overflow: hidden; 
+/* ============================================================
+   TeX Board — Refined Dark Canvas
+   ============================================================ */
+
+:root {
+    --bg:           #0f1117;
+    --surface:      #181c25;
+    --surface-2:    #1f2433;
+    --border:       #2a3040;
+    --border-focus: #3d4f6e;
+    --text:         #e4e8f0;
+    --text-muted:   #6b7694;
+    --text-dim:     #3f4a62;
+    --accent:       #5b9cf6;
+    --accent-dim:   #2b4a80;
+    --accent-glow:  rgba(91, 156, 246, 0.15);
+    --danger:       #f56565;
+    --danger-dim:   rgba(245, 101, 101, 0.12);
+    --handle:       #252c3e;
+    --handle-hover: #2e3754;
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+    --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
+    --shadow-lg:    0 8px 40px rgba(0,0,0,0.6);
+    --radius:       10px;
+    --radius-sm:    6px;
+    --font-ui:      'DM Mono', monospace;
+    --font-display: 'Fraunces', Georgia, serif;
+    --connect-col:  #5b9cf6;
 }
 
-.control-panel {
-    position: absolute;
-    top: 20px;
+/* ---- Reset & Base ----------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background-color: var(--bg);
+    background-image:
+        linear-gradient(rgba(91,156,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(91,156,246,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    font-family: var(--font-ui);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* ---- Toolbar --------------------------------------------- */
+.toolbar {
+    position: fixed;
+    top: 16px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(255, 255, 255, 0.9);
-    padding: 10px 20px;
-    border-radius: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    text-align: center;
-    z-index: 1000;
     display: flex;
-    gap: 10px;
-}
-
-.btn {
-    color: white;
-    border: none;
+    align-items: center;
+    gap: 12px;
+    background: rgba(24, 28, 37, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: 40px;
     padding: 8px 16px;
-    font-size: 14px;
-    border-radius: 15px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.2s;
+    z-index: 1000;
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-.create-btn {
-    background-color: #0078d4;
+.toolbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-right: 12px;
+    border-right: 1px solid var(--border);
 }
+
+.brand-icon {
+    font-size: 18px;
+    color: var(--accent);
+    line-height: 1;
+    filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.brand-name {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+}
+.brand-name em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 300;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    font-size: 11px;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+.tool-btn:hover {
+    color: var(--text);
+    border-color: var(--border-focus);
+    background: var(--handle-hover);
+}
+.tool-btn svg { flex-shrink: 0; }
 
 .create-btn:hover {
-    background-color: #005a9e;
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+    box-shadow: 0 0 12px var(--accent-glow);
 }
 
-.line-btn {
-    background-color: #2b2b2b;
+.connect-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    box-shadow: 0 0 14px var(--accent-glow);
+    animation: pulse-connect 2s ease-in-out infinite;
 }
 
-.line-btn.active {
-    background-color: #e81123;
-    box-shadow: 0 0 8px rgba(232, 17, 35, 0.6);
+@keyframes pulse-connect {
+    0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+    50%       { box-shadow: 0 0 20px rgba(91,156,246,0.3); }
 }
 
+.clear-btn:hover {
+    color: var(--danger);
+    border-color: rgba(245, 101, 101, 0.3);
+    background: var(--danger-dim);
+}
+
+.toolbar-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+    max-width: 220px;
+    letter-spacing: 0.2px;
+    transition: color 0.2s;
+}
+.toolbar-hint.alert {
+    color: var(--accent);
+}
+
+/* ---- Node Cards ------------------------------------------ */
 .draggable-container {
     position: absolute;
-    padding: 5px;
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    border: 1px solid #ddd;
-    display: inline-block;
-    z-index: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    display: inline-flex;
+    flex-direction: column;
+    z-index: 2;
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+    min-width: 260px;
+}
+
+.draggable-container:hover {
+    border-color: var(--border-focus);
+    box-shadow: var(--shadow-lg);
+}
+
+.draggable-container.is-dragging {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px var(--accent-dim);
+    transform: scale(1.01);
+    z-index: 100 !important;
+    border-color: var(--accent-dim);
+}
+
+.draggable-container.connect-source {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
+}
+
+.draggable-container.connect-target-hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 25px var(--accent-glow);
+}
+
+/* Node entering animation */
+.draggable-container.node-enter {
+    animation: nodeEnter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes nodeEnter {
+    from { opacity: 0; transform: scale(0.85) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ---- Node Header ----------------------------------------- */
+.node-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px 8px 8px;
+    border-bottom: 1px solid var(--border);
+    background: var(--handle);
+    border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .drag-handle {
-    height: 15px;
-    background-color: #e0e0e0;
-    border-radius: 4px 4px 0 0;
-    margin-bottom: 5px;
     display: flex;
-    justify-content: center;
     align-items: center;
-    cursor: move; 
-    transition: background-color 0.2s;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    color: var(--text-dim);
+    cursor: grab;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+}
+.drag-handle:hover {
+    color: var(--text-muted);
+    background: var(--handle-hover);
+}
+.drag-handle:active { cursor: grabbing; }
+
+.node-title {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    outline: none;
+    cursor: text;
+    min-width: 0;
+    transition: color 0.15s;
+}
+.node-title:focus {
+    color: var(--text);
+}
+.node-title::placeholder { color: var(--text-dim); }
+
+.node-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+    opacity: 0;
+}
+.draggable-container:hover .node-delete { opacity: 1; }
+.node-delete:hover {
+    color: var(--danger);
+    background: var(--danger-dim);
 }
 
-body.drawing-mode .drag-handle {
-    background-color: #a6d8ff;
-    cursor: cell;
-}
-
-.drag-handle::after {
-    content: "•••";
-    color: #888;
-    font-size: 10px;
-    letter-spacing: 2px;
-}
-
-/* Wrapper to constrain both textarea and preview to the same size */
+/* ---- Editor Area ----------------------------------------- */
 .editor-wrapper {
     position: relative;
     width: 300px;
     height: 150px;
-}
-
-textarea, .tex-preview {
-    width: 100%;
-    height: 100%;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 10px;
-    box-sizing: border-box;
-    font-size: 14px;
-    position: absolute;
-    top: 0;
-    left: 0;
+    border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+    overflow: hidden;
 }
 
 textarea {
-    resize: both; 
-    display: block;
-    z-index: 2;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    resize: both;
     background: transparent;
+    border: none;
+    padding: 12px 14px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    z-index: 2;
+    outline: none;
+    caret-color: var(--accent);
 }
+
+textarea::placeholder { color: var(--text-dim); }
 
 textarea:focus {
-    outline: 2px solid #0078d4;
-    background: #ffffff;
+    background: var(--surface-2);
 }
 
-/* Preview layer sits behind textarea unless activated */
 .tex-preview {
-    background: #ffffff;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    padding: 12px 14px;
+    background: var(--surface);
     overflow-y: auto;
     white-space: normal;
-    word-break: break-all;
+    word-break: break-word;
     z-index: 1;
-    pointer-events: none; /* Let clicks pass through to textarea when hidden */
+    pointer-events: none;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text);
 }
 
-/* When textarea loses focus, preview moves to the front */
+/* Preview visible when not editing */
 .draggable-container:not(.editing) .tex-preview {
     z-index: 3;
-    pointer-events: auto; /* Allow scrolling/selection in preview mode */
+    pointer-events: auto;
+}
+
+/* MathJax color overrides for dark mode */
+.MathJax { color: var(--text) !important; }
+.tex-preview .MathJax_Display { margin: 0.6em 0; }
+
+/* ---- Connect Dot ----------------------------------------- */
+.node-connect-dot {
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    background: var(--surface);
+    border: 2px solid var(--border-focus);
+    border-radius: 50%;
+    cursor: crosshair;
+    z-index: 10;
+    transition: all 0.15s;
+    opacity: 0;
+}
+.draggable-container:hover .node-connect-dot { opacity: 1; }
+
+body.drawing-mode .node-connect-dot {
+    opacity: 1;
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: dotPulse 1.5s ease-in-out infinite;
+}
+@keyframes dotPulse {
+    0%, 100% { transform: translateY(-50%) scale(1); }
+    50%       { transform: translateY(-50%) scale(1.25); }
+}
+
+/* ---- SVG Canvas ------------------------------------------ */
+#workspace {
+    position: absolute;
+    inset: 0;
+    padding-top: 70px; /* clear the fixed toolbar */
 }
 
 #svg-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none; 
-    z-index: 0;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
 }
+
+/* ---- Connection Lines ------------------------------------ */
+.connection-path {
+    stroke: var(--connect-col);
+    stroke-width: 2;
+    fill: none;
+    marker-end: url(#arrow);
+    opacity: 0.7;
+    transition: opacity 0.2s, stroke-width 0.2s;
+}
+.connection-path:hover {
+    opacity: 1;
+    stroke-width: 2.5;
+}
+
+.preview-path {
+    stroke: var(--accent-dim);
+    stroke-width: 1.8;
+    fill: none;
+    stroke-dasharray: 6 4;
+    marker-end: url(#arrow-preview);
+    animation: dash-flow 0.6s linear infinite;
+}
+@keyframes dash-flow {
+    to { stroke-dashoffset: -10; }
+}
+
+/* ---- Delete button on connection ------------------------- */
+.conn-delete-btn {
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.2s;
+}
+.conn-delete-btn circle { fill: var(--surface-2); stroke: var(--border-focus); }
+.conn-delete-btn path  { stroke: var(--text-dim); }
+.conn-delete-btn:hover circle { fill: var(--danger-dim); stroke: var(--danger); }
+.conn-delete-btn:hover path   { stroke: var(--danger); }
+
+/* ---- Toast Notification ---------------------------------- */
+.toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface-2);
+    border: 1px solid var(--border-focus);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 8px 18px;
+    border-radius: 20px;
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    letter-spacing: 0.3px;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ---- Scrollbar styling ----------------------------------- */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }

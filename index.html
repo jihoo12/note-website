@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>textarea with Connections & MathJax</title>
+    <title>TeX Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    
     <script>
         window.MathJax = {
             tex: {
@@ -14,6 +15,11 @@
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            },
+            startup: {
+                ready() {
+                    MathJax.startup.defaultReady();
+                }
             }
         };
     </script>
@@ -21,35 +27,89 @@
 </head>
 <body>
 
-    <div class="control-panel">
-        <button class="btn create-btn" id="addTextareaBtn">+ Create New Textarea</button>
-        <button class="btn line-btn" id="toggleLineBtn">🔗 Connect Mode: OFF</button>
+    <!-- Top toolbar -->
+    <div class="toolbar">
+        <div class="toolbar-brand">
+            <span class="brand-icon">∑</span>
+            <span class="brand-name">TeX<em>Board</em></span>
+        </div>
+        <div class="toolbar-actions">
+            <button class="tool-btn create-btn" id="addTextareaBtn" title="Add node (N)">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                New Node
+            </button>
+            <button class="tool-btn connect-btn" id="toggleLineBtn" title="Connect nodes (C)">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="2.5" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="11.5" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 7h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <span id="connectLabel">Connect</span>
+            </button>
+            <button class="tool-btn clear-btn" id="clearLinesBtn" title="Clear all connections">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Clear Lines
+            </button>
+        </div>
+        <div class="toolbar-hint" id="statusHint">Drag handles to move · Connect nodes with Connect mode</div>
     </div>
 
+    <!-- SVG overlay for connection lines -->
     <svg id="svg-canvas">
         <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M 0 1 L 10 5 L 0 9 z" fill="#0078d4" />
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="var(--accent)"/>
             </marker>
+            <marker id="arrow-preview" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="var(--accent-dim)"/>
+            </marker>
+            <filter id="glow">
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
         </defs>
     </svg>
 
+    <!-- Canvas workspace -->
     <div id="workspace">
-        <div class="draggable-container" style="top: 30%; left: 20%;">
-            <div class="drag-handle"></div>
+        <div class="draggable-container" style="top: 28%; left: 18%;" data-label="Node A">
+            <div class="node-header">
+                <div class="drag-handle">
+                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                        <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <input class="node-title" type="text" value="Node A" placeholder="Label…" spellcheck="false">
+                <button class="node-delete" title="Delete node">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+            </div>
             <div class="editor-wrapper">
-                <textarea placeholder="Type TeX here (e.g., $E=mc^2$) and click outside..."></textarea>
+                <textarea placeholder="Type TeX here…&#10;e.g. $E = mc^2$"></textarea>
                 <div class="tex-preview"></div>
             </div>
+            <div class="node-connect-dot" title="Drag to connect"></div>
         </div>
-        <div class="draggable-container" style="top: 30%; left: 60%;">
-            <div class="drag-handle"></div>
+        <div class="draggable-container" style="top: 28%; left: 58%;" data-label="Node B">
+            <div class="node-header">
+                <div class="drag-handle">
+                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                        <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <input class="node-title" type="text" value="Node B" placeholder="Label…" spellcheck="false">
+                <button class="node-delete" title="Delete node">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+            </div>
             <div class="editor-wrapper">
-                <textarea placeholder="Type TeX here (e.g., $$\int_0^\infty x^2 dx$$)..."></textarea>
+                <textarea placeholder="Type TeX here…&#10;e.g. $$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$"></textarea>
                 <div class="tex-preview"></div>
             </div>
+            <div class="node-connect-dot" title="Drag to connect"></div>
         </div>
     </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
 
     <script src="script.js"></script>
 </body>
