@@ -69,7 +69,6 @@ body.panning * { cursor: grabbing !important; }
     padding: 8px 16px;
     z-index: 1000;
     box-shadow: var(--shadow-md), 0 0 0 1px rgba(7,54,66,0.04) inset;
-    white-space: nowrap;
 }
 
 .toolbar-brand {
@@ -199,18 +198,6 @@ body.panning * { cursor: grabbing !important; }
     border-color: var(--accent-dim);
     background: var(--accent-glow);
 }
-
-/* ---- Status hint ----------------------------------------- */
-.toolbar-hint {
-    font-size: 10px;
-    color: var(--text-dim);
-    padding-left: 12px;
-    border-left: 1px solid var(--border);
-    max-width: 260px;
-    letter-spacing: 0.2px;
-    transition: color 0.2s;
-}
-.toolbar-hint.alert { color: var(--accent); }
 
 /* ---- Infinite canvas workspace --------------------------- */
 #workspace {
