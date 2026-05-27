@@ -110,10 +110,11 @@ function attachEditorEvents(container) {
     const titleInput = container.querySelector('.node-title');
     titleInput.addEventListener('mousedown', e => e.stopPropagation());
 
-    // Connect dots (4 directions)
+    // Connect dots (4 directions) — drag-to-connect, always active
     container.querySelectorAll('.node-connect-dot').forEach(dot => {
         dot.addEventListener('mousedown', (e) => {
             e.stopPropagation();
+            e.preventDefault();
             const dir = dot.dataset.dir;
             startConnection(container, e, dir);
         });
@@ -160,10 +161,11 @@ toggleLineBtn.addEventListener("click", () => {
 
 function resetDrawingState() {
     isDrawingMode = false;
+    isDraggingConnection = false;
     connectLabel.textContent = 'Connect';
     toggleLineBtn.classList.remove('active');
     document.body.classList.remove('drawing-mode');
-    statusHint.textContent = 'Drag handles to move · Connect nodes with Connect mode';
+    statusHint.textContent = 'Drag handles to move · Drag dots to connect nodes';
     statusHint.classList.remove('alert');
     if (activeLine) { activeLine.remove(); activeLine = null; }
     startDir = null;
@@ -171,6 +173,9 @@ function resetDrawingState() {
         startContainer.classList.remove('connect-source');
         startContainer = null;
     }
+    // Clear all target highlights
+    document.querySelectorAll('.connect-target-hover, .dot-target-hover').forEach(el =>
+        el.classList.remove('connect-target-hover', 'dot-target-hover'));
 }
 
 // ---- Clear all connections --------------------------------
@@ -185,12 +190,15 @@ clearBtn.addEventListener('click', () => {
 
 // ---- Start drawing a connection line ---------------------
 let startDir = null;
+let isDraggingConnection = false;
 
 function startConnection(container, e, dir) {
-    if (!isDrawingMode) return;
+    // Works with OR without connect mode — drag-to-connect is always available
     startContainer = container;
     startDir = dir;
+    isDraggingConnection = true;
     container.classList.add('connect-source');
+    document.body.classList.add('drawing-mode');
 
     const start = getDotPoint(startContainer, dir);
     activeLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -349,19 +357,25 @@ document.addEventListener("mousedown", (e) => {
 });
 
 document.addEventListener("mousemove", (e) => {
-    // Update preview connection line
-    if (isDrawingMode && activeLine && startContainer) {
+    // Handle drag-to-connect (works always) AND click-mode connect
+    if ((isDraggingConnection || isDrawingMode) && activeLine && startContainer) {
         const start = getDotPoint(startContainer, startDir);
         updateLinePath(activeLine, start.x, start.y,
             e.clientX + window.scrollX, e.clientY + window.scrollY, startDir, null);
 
-        // Highlight potential target on hover
-        document.querySelectorAll('.draggable-container').forEach(el => {
-            el.classList.remove('connect-target-hover');
-        });
-        const target = e.target.closest('.draggable-container');
-        if (target && target !== startContainer) {
-            target.classList.add('connect-target-hover');
+        // Highlight target node and nearest dot
+        document.querySelectorAll('.connect-target-hover').forEach(el => el.classList.remove('connect-target-hover'));
+        document.querySelectorAll('.dot-target-hover').forEach(el => el.classList.remove('dot-target-hover'));
+
+        const targetDot = e.target.closest('.node-connect-dot');
+        const targetNode = e.target.closest('.draggable-container');
+
+        if (targetDot && targetDot.closest('.draggable-container') !== startContainer) {
+            // Hovering directly over a dot — highlight that dot specifically
+            targetDot.classList.add('dot-target-hover');
+        } else if (targetNode && targetNode !== startContainer) {
+            // Hovering over another node body — highlight the node
+            targetNode.classList.add('connect-target-hover');
         }
         return;
     }
@@ -389,18 +403,29 @@ document.addEventListener("mousemove", (e) => {
 });
 
 document.addEventListener("mouseup", (e) => {
-    // Finalize connection drawing
-    if (isDrawingMode && startContainer) {
-        const target = e.target.closest('.draggable-container');
-        if (target && target !== startContainer) {
-            finalizeConnection(startContainer, target);
+    // Finalize connection — works for both drag-to-connect and click-mode
+    if ((isDraggingConnection || isDrawingMode) && startContainer) {
+        // Check if released on a specific dot first (snap to that direction)
+        const targetDot  = e.target.closest('.node-connect-dot');
+        const targetNode = targetDot
+            ? targetDot.closest('.draggable-container')
+            : e.target.closest('.draggable-container');
+
+        if (targetNode && targetNode !== startContainer) {
+            finalizeConnection(startContainer, targetNode);
         }
+
         if (activeLine) { activeLine.remove(); activeLine = null; }
         startContainer.classList.remove('connect-source');
-        document.querySelectorAll('.connect-target-hover').forEach(el =>
-            el.classList.remove('connect-target-hover'));
+        document.querySelectorAll('.connect-target-hover, .dot-target-hover').forEach(el =>
+            el.classList.remove('connect-target-hover', 'dot-target-hover'));
         startContainer = null;
-        resetDrawingState();
+        startDir = null;
+        isDraggingConnection = false;
+
+        // Only fully reset toolbar state if in click-mode; drag-mode doesn't change toolbar
+        if (isDrawingMode) resetDrawingState();
+        else document.body.classList.remove('drawing-mode');
         return;
     }
 

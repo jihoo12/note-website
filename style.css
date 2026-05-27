@@ -1,31 +1,54 @@
 /* ============================================================
-   TeX Board — Refined Dark Canvas
+   TeX Board — Solarized Light Theme
+   Solarized palette by Ethan Schoonover
    ============================================================ */
 
+/*
+  Solarized base tones (light):
+    base3  #fdf6e3  — main background
+    base2  #eee8d5  — highlight background
+    base1  #93a1a1  — comments / secondary content
+    base0  #657b83  — body text (light bg)
+    base00 #657b83
+    base01 #586e75  — optional emphasis (light bg)
+    base02 #073642
+    base03 #002b36
+
+  Accent colors:
+    yellow  #b58900
+    orange  #cb4b16
+    red     #dc322f
+    magenta #d33682
+    violet  #6c71c4
+    blue    #268bd2
+    cyan    #2aa198
+    green   #859900
+*/
+
 :root {
-    --bg:           #0f1117;
-    --surface:      #181c25;
-    --surface-2:    #1f2433;
-    --border:       #2a3040;
-    --border-focus: #3d4f6e;
-    --text:         #e4e8f0;
-    --text-muted:   #6b7694;
-    --text-dim:     #3f4a62;
-    --accent:       #5b9cf6;
-    --accent-dim:   #2b4a80;
-    --accent-glow:  rgba(91, 156, 246, 0.15);
-    --danger:       #f56565;
-    --danger-dim:   rgba(245, 101, 101, 0.12);
-    --handle:       #252c3e;
-    --handle-hover: #2e3754;
-    --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
-    --shadow-md:    0 4px 20px rgba(0,0,0,0.5);
-    --shadow-lg:    0 8px 40px rgba(0,0,0,0.6);
+    --bg:           #fdf6e3;
+    --surface:      #fdf6e3;
+    --surface-2:    #eee8d5;
+    --border:       #d9ceb2;
+    --border-focus: #93a1a1;
+    --text:         #586e75;
+    --text-muted:   #839496;
+    --text-dim:     #b3bfbf;
+    --accent:       #268bd2;
+    --accent-dim:   #9ecfef;
+    --accent-glow:  rgba(38, 139, 210, 0.12);
+    --danger:       #dc322f;
+    --danger-dim:   rgba(220, 50, 47, 0.10);
+    --handle:       #eee8d5;
+    --handle-hover: #e4dcc8;
+    --shadow-sm:    0 1px 3px rgba(7,54,66,0.08);
+    --shadow-md:    0 4px 20px rgba(7,54,66,0.10);
+    --shadow-lg:    0 8px 40px rgba(7,54,66,0.14);
     --radius:       10px;
     --radius-sm:    6px;
     --font-ui:      'DM Mono', monospace;
     --font-display: 'Fraunces', Georgia, serif;
-    --connect-col:  #5b9cf6;
+    --connect-col:  #268bd2;
 }
 
 /* ---- Reset & Base ----------------------------------------- */
@@ -34,8 +57,8 @@
 body {
     background-color: var(--bg);
     background-image:
-        linear-gradient(rgba(91,156,246,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(91,156,246,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(38,139,210,0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(38,139,210,0.07) 1px, transparent 1px);
     background-size: 40px 40px;
     font-family: var(--font-ui);
     color: var(--text);
@@ -53,14 +76,14 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(24, 28, 37, 0.88);
+    background: rgba(238, 232, 213, 0.88);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border);
     border-radius: 40px;
     padding: 8px 16px;
     z-index: 1000;
-    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.03) inset;
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(7,54,66,0.04) inset;
 }
 
 .toolbar-brand {
@@ -75,7 +98,7 @@ body {
     font-size: 18px;
     color: var(--accent);
     line-height: 1;
-    filter: drop-shadow(0 0 6px var(--accent));
+    filter: drop-shadow(0 0 5px rgba(38,139,210,0.4));
 }
 
 .brand-name {
@@ -179,7 +202,7 @@ body {
 }
 
 .draggable-container.is-dragging {
-    box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px var(--accent-dim);
+    box-shadow: 0 20px 60px rgba(7,54,66,0.18), 0 0 0 1px var(--accent-dim);
     transform: scale(1.01);
     z-index: 100 !important;
     border-color: var(--accent-dim);
@@ -313,7 +336,6 @@ textarea:focus {
     padding: 12px 14px;
     background: var(--surface);
     overflow-y: auto;
-    white-space: normal;
     word-break: break-word;
     z-index: 1;
     pointer-events: none;
@@ -328,8 +350,7 @@ textarea:focus {
     pointer-events: auto;
 }
 
-/* MathJax color overrides for dark mode */
-.MathJax { color: var(--text) !important; }
+/* MathJax inherits text color from var(--text) via the preview container */
 .tex-preview .MathJax_Display { margin: 0.6em 0; }
 
 /* ---- Connect Dots (4 directions) ------------------------- */
@@ -362,6 +383,22 @@ textarea:focus {
 /* Per-axis hover — left/right don't use translateX */
 .node-connect-dot[data-dir="left"]:hover  { transform: translateY(-50%) scale(1.4); }
 .node-connect-dot[data-dir="right"]:hover { transform: translateY(-50%) scale(1.4); }
+
+/* Snap highlight when a drag-connect is hovering over this dot */
+.node-connect-dot.dot-target-hover {
+    opacity: 1 !important;
+    border-color: #859900;
+    background: rgba(133, 153, 0, 0.15);
+    box-shadow: 0 0 12px rgba(133, 153, 0, 0.35);
+}
+.node-connect-dot[data-dir="top"].dot-target-hover,
+.node-connect-dot[data-dir="bottom"].dot-target-hover {
+    transform: translateX(-50%) scale(1.6);
+}
+.node-connect-dot[data-dir="left"].dot-target-hover,
+.node-connect-dot[data-dir="right"].dot-target-hover {
+    transform: translateY(-50%) scale(1.6);
+}
 
 body.drawing-mode .node-connect-dot {
     opacity: 1;
