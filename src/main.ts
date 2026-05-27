@@ -9,6 +9,7 @@ import { showToast }          from './toast';
 import { clearAllConnections, updateAllConnections } from './connections';
 import { attachEditorEvents, onMouseMove, onMouseUp } from './node';
 import { initViewport, zoomBy, resetView, screenToCanvas } from './viewport';
+import { exportBoard, loadBoard } from './persistence';
 
 // ---- DOM refs -----------------------------------------------
 const workspace   = document.getElementById('workspace')      as HTMLDivElement;
@@ -22,6 +23,9 @@ const zoomInBtn   = document.getElementById('zoomInBtn')      as HTMLButtonEleme
 const zoomOutBtn  = document.getElementById('zoomOutBtn')     as HTMLButtonElement;
 const zoomLabel   = document.getElementById('zoomLevel')      as HTMLSpanElement;
 const resetBtn    = document.getElementById('resetViewBtn')   as HTMLButtonElement;
+const exportBtn   = document.getElementById('exportBtn')      as HTMLButtonElement;
+const loadBtn     = document.getElementById('loadBtn')        as HTMLButtonElement;
+const fileInput   = document.getElementById('fileInput')      as HTMLInputElement;
 
 // ---- State --------------------------------------------------
 let nodeCounter = 3;   // Node A = 1, Node B = 2 are pre-seeded in HTML
@@ -67,6 +71,45 @@ clearBtn.addEventListener('click', () => {
   showToast('All connections cleared');
 });
 
+// ---- Export ------------------------------------------------
+exportBtn.addEventListener('click', () => {
+  exportBoard(canvasLayer);
+  showToast('Board exported');
+});
+
+// ---- Load --------------------------------------------------
+loadBtn.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', () => {
+  const file = fileInput.files?.[0];
+  if (!file) return;
+  // Reset so the same file can be re-loaded if needed.
+  fileInput.value = '';
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(reader.result as string);
+    } catch {
+      showToast('Error: invalid JSON file');
+      return;
+    }
+
+    const err = loadBoard(parsed, canvasLayer, nodeTemplate, () => {
+      const label = nodeLabel(nodeCounter++);
+      return label;
+    });
+
+    if (err) {
+      showToast(`Error: ${err}`);
+    } else {
+      showToast('Board loaded');
+    }
+  };
+  reader.readAsText(file);
+});
+
 // ---- Add node ----------------------------------------------
 addBtn.addEventListener('click', addNode);
 
@@ -106,6 +149,14 @@ document.addEventListener('mouseup',   (e: MouseEvent) => {
 // ---- Keyboard shortcuts ------------------------------------
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   const tag = (e.target as HTMLElement).tagName;
+
+  // Ctrl+S — export (works even inside text fields so users don't lose work)
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    exportBtn.click();
+    return;
+  }
+
   if (tag === 'TEXTAREA' || tag === 'INPUT') return;
 
   if (e.key === 'n' || e.key === 'N')   addBtn.click();

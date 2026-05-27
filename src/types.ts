@@ -23,6 +23,32 @@ export interface Connection {
   toDir:     Direction;
 }
 
+// ---- Persistence --------------------------------------------
+
+/** Serialisable snapshot of one node. */
+export interface NodeRecord {
+  id:      string;   // UUID — used to re-wire connections on load
+  title:   string;
+  content: string;   // raw textarea text
+  x:       number;   // canvas-local left px
+  y:       number;   // canvas-local top  px
+  width:   number;   // editor-wrapper width  px
+  height:  number;   // editor-wrapper height px
+}
+
+/** Serialisable snapshot of one connection. */
+export interface ConnectionRecord {
+  fromId: string;
+  toId:   string;
+}
+
+/** Full board snapshot written to / read from JSON. */
+export interface BoardData {
+  version:     1;
+  nodes:       NodeRecord[];
+  connections: ConnectionRecord[];
+}
+
 /** All mutable state for an in-progress drag-to-connect gesture. */
 export interface ConnectDragState {
   active:     boolean;

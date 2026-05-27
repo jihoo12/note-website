@@ -69,6 +69,7 @@ body.panning * { cursor: grabbing !important; }
     padding: 8px 16px;
     z-index: 1000;
     box-shadow: var(--shadow-md), 0 0 0 1px rgba(7,54,66,0.04) inset;
+    white-space: nowrap;
 }
 
 .toolbar-brand {
@@ -149,6 +150,18 @@ body.panning * { cursor: grabbing !important; }
     color: var(--danger);
     border-color: rgba(245, 101, 101, 0.3);
     background: var(--danger-dim);
+}
+
+.export-btn:hover {
+    color: #2aa198;
+    border-color: rgba(42, 161, 152, 0.35);
+    background: rgba(42, 161, 152, 0.09);
+}
+
+.load-btn:hover {
+    color: #859900;
+    border-color: rgba(133, 153, 0, 0.35);
+    background: rgba(133, 153, 0, 0.09);
 }
 
 /* ---- Zoom controls --------------------------------------- */
