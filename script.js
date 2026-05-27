@@ -110,11 +110,13 @@ function attachEditorEvents(container) {
     const titleInput = container.querySelector('.node-title');
     titleInput.addEventListener('mousedown', e => e.stopPropagation());
 
-    // Connect dot (right side)
-    const connectDot = container.querySelector('.node-connect-dot');
-    connectDot.addEventListener('mousedown', (e) => {
-        e.stopPropagation();
-        startConnection(container, e);
+    // Connect dots (4 directions)
+    container.querySelectorAll('.node-connect-dot').forEach(dot => {
+        dot.addEventListener('mousedown', (e) => {
+            e.stopPropagation();
+            const dir = dot.dataset.dir;
+            startConnection(container, e, dir);
+        });
     });
 
     renderMath(container);
@@ -164,6 +166,7 @@ function resetDrawingState() {
     statusHint.textContent = 'Drag handles to move · Connect nodes with Connect mode';
     statusHint.classList.remove('alert');
     if (activeLine) { activeLine.remove(); activeLine = null; }
+    startDir = null;
     if (startContainer) {
         startContainer.classList.remove('connect-source');
         startContainer = null;
@@ -181,58 +184,101 @@ clearBtn.addEventListener('click', () => {
 });
 
 // ---- Start drawing a connection line ---------------------
-function startConnection(container, e) {
+let startDir = null;
+
+function startConnection(container, e, dir) {
     if (!isDrawingMode) return;
     startContainer = container;
+    startDir = dir;
     container.classList.add('connect-source');
 
-    const start = getConnectPoint(startContainer);
+    const start = getDotPoint(startContainer, dir);
     activeLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
     activeLine.setAttribute("class", "preview-path");
     svgCanvas.appendChild(activeLine);
-    updateLinePath(activeLine, start.x, start.y, e.clientX + window.scrollX, e.clientY + window.scrollY);
+    updateLinePath(activeLine, start.x, start.y, e.clientX + window.scrollX, e.clientY + window.scrollY, dir, null);
 }
 
-// ---- Coordinate helpers ----------------------------------
-function getConnectPoint(container) {
-    const dot = container.querySelector('.node-connect-dot');
-    const rect = dot ? dot.getBoundingClientRect() : container.getBoundingClientRect();
-    if (dot) {
-        return {
-            x: rect.left + rect.width / 2 + window.scrollX,
-            y: rect.top  + rect.height / 2 + window.scrollY
-        };
-    }
+// ---- Get exact pixel center of a specific direction dot ---
+function getDotPoint(container, dir) {
+    const dot = container.querySelector(`.node-connect-dot[data-dir="${dir}"]`);
+    if (!dot) return getNodeCenter(container);
+    const r = dot.getBoundingClientRect();
     return {
-        x: rect.right + window.scrollX,
-        y: rect.top + rect.height / 2 + window.scrollY
+        x: r.left + r.width  / 2 + window.scrollX,
+        y: r.top  + r.height / 2 + window.scrollY
     };
+}
+
+// ---- Find the best (closest) dot pair between two nodes ---
+function getBestDotPair(fromContainer, toContainer) {
+    const dirs = ['top', 'right', 'bottom', 'left'];
+    let best = null, bestDist = Infinity;
+    for (const fd of dirs) {
+        for (const td of dirs) {
+            const fp = getDotPoint(fromContainer, fd);
+            const tp = getDotPoint(toContainer, td);
+            const dist = Math.hypot(fp.x - tp.x, fp.y - tp.y);
+            if (dist < bestDist) { bestDist = dist; best = { fromDir: fd, toDir: td }; }
+        }
+    }
+    return best;
+}
+
+// ---- Get center of a dot by stored direction --------------
+function getConnectPoint(container, dir) {
+    if (dir) return getDotPoint(container, dir);
+    // Fallback: use right dot
+    return getDotPoint(container, 'right');
 }
 
 function getNodeCenter(container) {
     const rect = container.getBoundingClientRect();
     return {
-        x: rect.left + rect.width / 2 + window.scrollX,
+        x: rect.left + rect.width  / 2 + window.scrollX,
         y: rect.top  + rect.height / 2 + window.scrollY
     };
 }
 
-// ---- Curved path between two points ----------------------
-function updateLinePath(lineEl, x1, y1, x2, y2) {
-    const dx = Math.abs(x2 - x1) * 0.55;
-    const cx1 = x1 + dx;
-    const cx2 = x2 - dx;
-    lineEl.setAttribute("d", `M ${x1} ${y1} C ${cx1} ${y1}, ${cx2} ${y2}, ${x2} ${y2}`);
+// ---- Curved path with direction-aware control points -----
+function updateLinePath(lineEl, x1, y1, x2, y2, fromDir, toDir) {
+    const dist = Math.hypot(x2 - x1, y2 - y1);
+    const tension = Math.max(40, dist * 0.45);
+
+    const offset = (dir, t) => {
+        if (dir === 'right')  return { cx: x1 + t, cy: y1 };
+        if (dir === 'left')   return { cx: x1 - t, cy: y1 };
+        if (dir === 'bottom') return { cx: x1,     cy: y1 + t };
+        if (dir === 'top')    return { cx: x1,     cy: y1 - t };
+        // fallback: horizontal
+        return { cx: x1 + (x2 > x1 ? t : -t), cy: y1 };
+    };
+    const offset2 = (dir, t) => {
+        if (dir === 'right')  return { cx: x2 + t, cy: y2 };
+        if (dir === 'left')   return { cx: x2 - t, cy: y2 };
+        if (dir === 'bottom') return { cx: x2,     cy: y2 + t };
+        if (dir === 'top')    return { cx: x2,     cy: y2 - t };
+        return { cx: x2 - (x2 > x1 ? t : -t), cy: y2 };
+    };
+
+    const c1 = fromDir ? offset(fromDir,   tension) : { cx: x1 + tension, cy: y1 };
+    const c2 = toDir   ? offset2(toDir,   tension) : { cx: x2 - tension, cy: y2 };
+
+    lineEl.setAttribute("d", `M ${x1} ${y1} C ${c1.cx} ${c1.cy}, ${c2.cx} ${c2.cy}, ${x2} ${y2}`);
 }
 
 // ---- Update all rendered connections ----------------------
 function updateAllConnections() {
     connections.forEach(conn => {
-        const s = getConnectPoint(conn.from);
-        const e = getConnectPoint(conn.to);
-        updateLinePath(conn.path, s.x, s.y, e.x, e.y);
+        // Re-evaluate best dot pair every move (nodes may have repositioned)
+        const best = getBestDotPair(conn.from, conn.to);
+        conn.fromDir = best.fromDir;
+        conn.toDir   = best.toDir;
 
-        // Move delete button to midpoint
+        const s = getDotPoint(conn.from, conn.fromDir);
+        const e = getDotPoint(conn.to,   conn.toDir);
+        updateLinePath(conn.path, s.x, s.y, e.x, e.y, conn.fromDir, conn.toDir);
+
         if (conn.deleteBtn) {
             const mx = (s.x + e.x) / 2;
             const my = (s.y + e.y) / 2;
@@ -276,7 +322,9 @@ function finalizeConnection(fromContainer, toContainer) {
     });
     svgCanvas.appendChild(g);
 
-    const conn = { from: fromContainer, to: toContainer, path, deleteBtn: g };
+    const best = getBestDotPair(fromContainer, toContainer);
+    const conn = { from: fromContainer, to: toContainer, path, deleteBtn: g,
+                   fromDir: best.fromDir, toDir: best.toDir };
     connections.push(conn);
     updateAllConnections();
     showToast('Nodes connected');
@@ -303,9 +351,9 @@ document.addEventListener("mousedown", (e) => {
 document.addEventListener("mousemove", (e) => {
     // Update preview connection line
     if (isDrawingMode && activeLine && startContainer) {
-        const start = getConnectPoint(startContainer);
+        const start = getDotPoint(startContainer, startDir);
         updateLinePath(activeLine, start.x, start.y,
-            e.clientX + window.scrollX, e.clientY + window.scrollY);
+            e.clientX + window.scrollX, e.clientY + window.scrollY, startDir, null);
 
         // Highlight potential target on hover
         document.querySelectorAll('.draggable-container').forEach(el => {
@@ -392,7 +440,10 @@ addBtn.addEventListener("click", () => {
             <textarea placeholder="Type TeX here…"></textarea>
             <div class="tex-preview"></div>
         </div>
-        <div class="node-connect-dot" title="Connect to another node"></div>
+        <div class="node-connect-dot" data-dir="top"></div>
+        <div class="node-connect-dot" data-dir="right"></div>
+        <div class="node-connect-dot" data-dir="bottom"></div>
+        <div class="node-connect-dot" data-dir="left"></div>
     `;
 
     workspace.appendChild(container);

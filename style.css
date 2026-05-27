@@ -332,34 +332,60 @@ textarea:focus {
 .MathJax { color: var(--text) !important; }
 .tex-preview .MathJax_Display { margin: 0.6em 0; }
 
-/* ---- Connect Dot ----------------------------------------- */
+/* ---- Connect Dots (4 directions) ------------------------- */
 .node-connect-dot {
     position: absolute;
-    right: -8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     background: var(--surface);
     border: 2px solid var(--border-focus);
     border-radius: 50%;
     cursor: crosshair;
     z-index: 10;
-    transition: all 0.15s;
+    transition: opacity 0.15s, transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
     opacity: 0;
 }
+
+/* Directional placement */
+.node-connect-dot[data-dir="top"]    { top: -7px;  left: 50%; transform: translateX(-50%); }
+.node-connect-dot[data-dir="bottom"] { bottom: -7px; left: 50%; transform: translateX(-50%); }
+.node-connect-dot[data-dir="left"]   { left: -7px; top: 50%;  transform: translateY(-50%); }
+.node-connect-dot[data-dir="right"]  { right: -7px; top: 50%; transform: translateY(-50%); }
+
 .draggable-container:hover .node-connect-dot { opacity: 1; }
+.node-connect-dot:hover {
+    transform: translateX(-50%) scale(1.4);
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+/* Per-axis hover — left/right don't use translateX */
+.node-connect-dot[data-dir="left"]:hover  { transform: translateY(-50%) scale(1.4); }
+.node-connect-dot[data-dir="right"]:hover { transform: translateY(-50%) scale(1.4); }
 
 body.drawing-mode .node-connect-dot {
     opacity: 1;
     border-color: var(--accent);
     background: var(--accent-glow);
     box-shadow: 0 0 8px var(--accent-glow);
-    animation: dotPulse 1.5s ease-in-out infinite;
 }
-@keyframes dotPulse {
+
+/* Pulse animations per axis */
+body.drawing-mode .node-connect-dot[data-dir="top"],
+body.drawing-mode .node-connect-dot[data-dir="bottom"] {
+    animation: dotPulseX 1.5s ease-in-out infinite;
+}
+body.drawing-mode .node-connect-dot[data-dir="left"],
+body.drawing-mode .node-connect-dot[data-dir="right"] {
+    animation: dotPulseY 1.5s ease-in-out infinite;
+}
+@keyframes dotPulseX {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50%       { transform: translateX(-50%) scale(1.35); }
+}
+@keyframes dotPulseY {
     0%, 100% { transform: translateY(-50%) scale(1); }
-    50%       { transform: translateY(-50%) scale(1.25); }
+    50%       { transform: translateY(-50%) scale(1.35); }
 }
 
 /* ---- SVG Canvas ------------------------------------------ */
