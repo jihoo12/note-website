@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>textarea with Connections</title>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden; 
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .create-btn {
+            background-color: #0078d4;
+        }
+
+        .create-btn:hover {
+            background-color: #005a9e;
+        }
+
+        .line-btn {
+            background-color: #2b2b2b;
+        }
+
+        .line-btn.active {
+            background-color: #e81123;
+            box-shadow: 0 0 8px rgba(232, 17, 35, 0.6);
+        }
+
+        .draggable-container {
+            position: absolute;
+            padding: 5px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            border: 1px solid #ddd;
+            display: inline-block;
+            z-index: 1;
+        }
+
+        .drag-handle {
+            height: 15px;
+            background-color: #e0e0e0;
+            border-radius: 4px 4px 0 0;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: move; 
+            transition: background-color 0.2s;
+        }
+        
+        /* Highlight handles when system is in drawing mode */
+        body.drawing-mode .drag-handle {
+            background-color: #a6d8ff;
+            cursor: cell;
+        }
+
+        .drag-handle::after {
+            content: "•••";
+            color: #888;
+            font-size: 10px;
+            letter-spacing: 2px;
+        }
+
+        textarea {
+            width: 300px;
+            height: 150px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: both; 
+            font-size: 14px;
+            display: block;
+        }
+        
+        textarea:focus {
+            outline: 2px solid #0078d4;
+        }
+
+        /* SVG layer for drawing connections */
+        #svg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through to elements underneath */
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="control-panel">
+        <button class="btn create-btn" id="addTextareaBtn">+ Create New Textarea</button>
+        <button class="btn line-btn" id="toggleLineBtn">🔗 Connect Mode: OFF</button>
+    </div>
+
+    <svg id="svg-canvas">
+        <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 1 L 10 5 L 0 9 z" fill="#0078d4" />
+            </marker>
+        </defs>
+    </svg>
+
+    <div id="workspace">
+        <div class="draggable-container" style="top: 30%; left: 20%;">
+            <div class="drag-handle"></div>
+            <textarea placeholder="Drag from handle to connect..."></textarea>
+        </div>
+        <div class="draggable-container" style="top: 30%; left: 60%;">
+            <div class="drag-handle"></div>
+            <textarea placeholder="Type something here..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        const workspace = document.getElementById("workspace");
+        const addBtn = document.getElementById("addTextareaBtn");
+        const toggleLineBtn = document.getElementById("toggleLineBtn");
+        const svgCanvas = document.getElementById("svg-canvas");
+
+        let currentDraggable = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        // State variables for managing line drawing
+        let isDrawingMode = false;
+        let connections = []; // Array tracking [{from: element, to: element, path: svgElement}]
+        let activeLine = null;
+        let startContainer = null;
+
+        // --- Helper: Generate unique IDs for new containers ---
+        function generateId() {
+            return 'node_' + Math.random().toString(36).substr(2, 9);
+        }
+        // Assign IDs to existing default textareas
+        document.querySelectorAll('.draggable-container').forEach(el => el.id = generateId());
+
+        // --- Toggle Connection Mode ---
+        toggleLineBtn.addEventListener("click", () => {
+            isDrawingMode = !isDrawingMode;
+            if (isDrawingMode) {
+                toggleLineBtn.textContent = "❌ Cancel Connect";
+                toggleLineBtn.classList.add("active");
+                document.body.classList.add("drawing-mode");
+            } else {
+                resetDrawingState();
+            }
+        });
+
+        function resetDrawingState() {
+            isDrawingMode = false;
+            toggleLineBtn.textContent = "🔗 Connect Mode: OFF";
+            toggleLineBtn.classList.remove("active");
+            document.body.classList.remove("drawing-mode");
+            if (activeLine) {
+                activeLine.remove();
+                activeLine = null;
+            }
+            startContainer = null;
+        }
+
+        // --- 1. Create New Textarea Function ---
+        addBtn.addEventListener("click", () => {
+            const newContainer = document.createElement("div");
+            newContainer.className = "draggable-container";
+            newContainer.id = generateId();
+            
+            const randomTop = Math.floor(Math.random() * 40) + 25; 
+            const randomLeft = Math.floor(Math.random() * 40) + 25; 
+            newContainer.style.top = `${randomTop}%`;
+            newContainer.style.left = `${randomLeft}%`;
+
+            newContainer.innerHTML = `
+                <div class="drag-handle"></div>
+                <textarea placeholder="Type something here..."></textarea>
+            `;
+
+            workspace.appendChild(newContainer);
+        });
+
+        // --- 2. Calculation helper to update paths dynamically ---
+        function getCenterCoords(element) {
+            const rect = element.getBoundingClientRect();
+            // Using the center coordinates of the drag handle bar for lines mapping
+            const handle = element.querySelector('.drag-handle');
+            const handleRect = handle.getBoundingClientRect();
+            return {
+                x: handleRect.left + handleRect.width / 2 + window.scrollX,
+                y: handleRect.top + handleRect.height / 2 + window.scrollY
+            };
+        }
+
+        function updateLinePath(lineElement, startX, startY, endX, endY) {
+            // Draw a smooth bezier curve between components
+            const deltaX = Math.abs(endX - startX) * 0.5;
+            const controlX1 = startX + (endX > startX ? deltaX : -deltaX);
+            const controlX2 = endY > startY ? endX : endX; 
+            
+            // Simple straight line fallback or subtle curve
+            lineElement.setAttribute("d", `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX1} ${endY}, ${endX} ${endY}`);
+        }
+
+        function updateAllConnections() {
+            connections.forEach(conn => {
+                const start = getCenterCoords(conn.from);
+                const end = getCenterCoords(conn.to);
+                updateLinePath(conn.path, start.x, start.y, end.x, end.y);
+            });
+        }
+
+        // --- 3. Global Dragging & Drawing Logic (Unified Event Listeners) ---
+        document.addEventListener("mousedown", (e) => {
+            if (!e.target.classList.contains("drag-handle")) return;
+            
+            const container = e.target.closest(".draggable-container");
+
+            if (isDrawingMode) {
+                // START DRAWING LINE
+                startContainer = container;
+                const startCoords = getCenterCoords(startContainer);
+
+                activeLine = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                activeLine.setAttribute("stroke", "#0078d4");
+                activeLine.setAttribute("stroke-width", "3");
+                activeLine.setAttribute("fill", "none");
+                activeLine.setAttribute("stroke-dasharray", "4 4"); // Dashed while plotting
+                activeLine.setAttribute("marker-end", "url(#arrow)");
+                svgCanvas.appendChild(activeLine);
+            } else {
+                // STANDARD ELEMENT DRAG
+                currentDraggable = container;
+                offsetX = e.clientX - currentDraggable.getBoundingClientRect().left;
+                offsetY = e.clientY - currentDraggable.getBoundingClientRect().top;
+                currentDraggable.style.opacity = "0.8";
+                
+                document.querySelectorAll(".draggable-container").forEach(el => el.style.zIndex = "1");
+                currentDraggable.style.zIndex = "10";
+            }
+        });
+
+        document.addEventListener("mousemove", (e) => {
+            // Case A: Drawing a line tracking cursor
+            if (isDrawingMode && activeLine && startContainer) {
+                const start = getCenterCoords(startContainer);
+                updateLinePath(activeLine, start.x, start.y, e.clientX, e.clientY);
+                return;
+            }
+
+            // Case B: Moving an element panel
+            if (!currentDraggable) return;
+
+            let x = e.clientX - offsetX;
+            let y = e.clientY - offsetY;
+
+            x = Math.max(0, Math.min(x, window.innerWidth - currentDraggable.offsetWidth));
+            y = Math.max(0, Math.min(y, window.innerHeight - currentDraggable.offsetHeight));
+
+            currentDraggable.style.left = `${x}px`;
+            currentDraggable.style.top = `${y}px`;
+
+            // Dynamically redraw connected paths on drag
+            updateAllConnections();
+        });
+
+        document.addEventListener("mouseup", (e) => {
+            // Case A: Completing line generation
+            if (isDrawingMode && activeLine) {
+                const targetHandle = e.target.classList.contains("drag-handle") ? e.target : null;
+                const endContainer = targetHandle ? targetHandle.closest(".draggable-container") : null;
+
+                // Validate link conditions: Must hit another valid box and cannot self-loop
+                if (endContainer && endContainer !== startContainer) {
+                    activeLine.setAttribute("stroke-dasharray", "none"); // Solidify line
+                    
+                    connections.push({
+                        from: startContainer,
+                        to: endContainer,
+                        path: activeLine
+                    });
+                    
+                    updateAllConnections();
+                } else {
+                    activeLine.remove(); // Invalid drop targets trash the temporary path 
+                }
+                
+                activeLine = null;
+                resetDrawingState();
+                return;
+            }
+
+            // Case B: Finishing drag drop
+            if (currentDraggable) {
+                currentDraggable.style.opacity = "1";
+                currentDraggable = null;
+            }
+        });
+
+        // Window resize adjustment handler
+        window.addEventListener('resize', updateAllConnections);
+    </script>
+
+</body>
+</html>
