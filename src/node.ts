@@ -22,9 +22,17 @@ const drag: ConnectDragState = {
   sourceDir:  null,
 };
 
+// ---- MathJax 4 startup promise ----------------------------
+// MathJax 4 guarantees window.MathJax.startup.promise resolves once the
+// engine is fully initialised and typesetPromise is available.  We capture
+// it once and reuse it for every node that tries to render before the engine
+// is ready.  In the common case (engine already ready) typesetPromise exists
+// immediately and we never even touch this promise.
+function mjReady(): Promise<void> {
+  return window.MathJax?.startup?.promise ?? Promise.resolve();
+}
+
 // ---- MathJax rendering ------------------------------------
-// Uses the MathJax v3 browser CDN global (window.MathJax / window.MathJax.typesetPromise).
-// This is loaded via a <script> tag in index.html — see the comment in main.ts.
 export function renderMath(container: HTMLElement): void {
   const textarea = container.querySelector<HTMLTextAreaElement>('textarea')!;
   const preview  = container.querySelector<HTMLDivElement>('.tex-preview')!;
@@ -41,20 +49,15 @@ export function renderMath(container: HTMLElement): void {
   const hasDelimiters = /(\\\[|\\\(|\$|\\begin\s*\{)/.test(raw);
   preview.innerHTML = hasDelimiters ? raw : `\\[${raw}\\]`;
 
-  // typesetPromise is set by the MathJax CDN bundle once it finishes loading.
-  // Guard against calling it before the script has initialised.
   if (typeof window.MathJax?.typesetPromise === 'function') {
+    // Fast path: engine already initialised.
     window.MathJax.typesetPromise([preview]).then(updateAllConnections);
   } else {
-    // MathJax not ready yet — retry once it signals startup complete.
-    window.MathJax = window.MathJax ?? {};
-    const original = window.MathJax.startup?.defaultReady?.bind(window.MathJax.startup);
-    if (window.MathJax.startup) {
-      window.MathJax.startup.defaultReady = () => {
-        original?.();
-        window.MathJax.typesetPromise?.([preview]).then(updateAllConnections);
-      };
-    }
+    // Slow path: wait for MathJax 4's startup promise then typeset.
+    // This replaces the fragile defaultReady monkey-patch used in v3.
+    mjReady().then(() => {
+      window.MathJax.typesetPromise?.([preview]).then(updateAllConnections);
+    });
   }
 }
 

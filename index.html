@@ -7,24 +7,34 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
 
-    <!-- MathJax v3 — served locally from node_modules via vite.config.ts.
-         The config MUST be defined before the script tag. -->
+    <!-- MathJax v4 — served locally from node_modules via scripts/copy-mathjax.mjs.
+         The config object MUST be defined before the script tag loads. -->
     <script>
         window.MathJax = {
             tex: {
                 inlineMath:  [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                // MathJax 4 enables the ams and boldsymbol packages by default;
+                // no need for the '[+]' syntax used in v3.
+                packages: { '[+]': ['ams', 'boldsymbol'] },
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
             },
+            // MathJax 4: 'mathjax-modern' is the new default web font.
+            // Use 'mathjax-tex' to keep the classic Computer Modern look.
+            output: {
+                font: 'mathjax-modern',
+            },
             startup: {
-                typeset: false,   // we call typesetPromise() manually per node
+                // We call typesetPromise() ourselves per node, so skip the
+                // initial full-page typeset that MathJax would otherwise do.
+                typeset: false,
             },
         };
     </script>
-    <!-- tex-chtml.js is the self-contained browser bundle (CommonHTML output).
-         /mathjax/ is served by the Vite plugin in dev and copied to dist/ in build. -->
+    <!-- tex-chtml.js is the self-contained CommonHTML browser bundle.
+         /mathjax/ is served statically by Vite (public/) in dev and build. -->
     <script src="/mathjax/es5/tex-chtml.js"></script>
 </head>
 <body>

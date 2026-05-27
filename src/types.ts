@@ -34,10 +34,16 @@ export interface ConnectDragState {
 declare global {
   interface Window {
     MathJax: {
+      // Core typesetting API — unchanged from v3
       typesetPromise?: (nodes: Element[]) => Promise<void>;
-      startup?: { defaultReady: () => void };
+      // v4: startup.promise resolves once the engine is fully initialised.
+      // v3: startup.defaultReady was a mutable hook — removed in v4.
+      startup?: {
+        promise: Promise<void>;
+      };
       tex?:     object;
       options?: object;
+      output?:  object;
     };
   }
 }
