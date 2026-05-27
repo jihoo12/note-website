@@ -43,6 +43,16 @@ body {
     user-select: none;
 }
 
+/* ---- Pan cursor states ------------------------------------ */
+body.pan-ready { cursor: grab; }
+body.pan-ready .draggable-container,
+body.pan-ready .drag-handle,
+body.pan-ready textarea { cursor: grab; }
+
+body.panning,
+body.panning * { cursor: grabbing !important; }
+
+/* ---- Toolbar --------------------------------------------- */
 .toolbar {
     position: fixed;
     top: 16px;
@@ -59,6 +69,7 @@ body {
     padding: 8px 16px;
     z-index: 1000;
     box-shadow: var(--shadow-md), 0 0 0 1px rgba(7,54,66,0.04) inset;
+    white-space: nowrap;
 }
 
 .toolbar-brand {
@@ -108,7 +119,11 @@ body {
     transition: all 0.18s ease;
     white-space: nowrap;
 }
-.tool-btn:hover { color: var(--text); border-color: var(--border-focus); background: var(--handle-hover); }
+.tool-btn:hover {
+    color: var(--text);
+    border-color: var(--border-focus);
+    background: var(--handle-hover);
+}
 .tool-btn svg { flex-shrink: 0; }
 
 .create-btn:hover {
@@ -137,17 +152,92 @@ body {
     background: var(--danger-dim);
 }
 
+/* ---- Zoom controls --------------------------------------- */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-left: 12px;
+    border-left: 1px solid var(--border);
+}
+
+.zoom-btn {
+    padding: 6px 9px;
+    min-width: 30px;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+}
+.zoom-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+.zoom-level {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    min-width: 40px;
+    text-align: center;
+    cursor: pointer;
+    padding: 5px 7px;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+}
+.zoom-level:hover {
+    background: var(--handle-hover);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.reset-view-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+/* ---- Status hint ----------------------------------------- */
 .toolbar-hint {
     font-size: 10px;
     color: var(--text-dim);
     padding-left: 12px;
     border-left: 1px solid var(--border);
-    max-width: 220px;
+    max-width: 260px;
     letter-spacing: 0.2px;
     transition: color 0.2s;
 }
 .toolbar-hint.alert { color: var(--accent); }
 
+/* ---- Infinite canvas workspace --------------------------- */
+#workspace {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+/*
+ * canvas-layer — the single element that receives pan/zoom transforms.
+ * transform-origin: 0 0 means the top-left corner is the zoom pivot,
+ * and viewport.ts manually adjusts panX/panY to keep the cursor fixed.
+ *
+ * Nodes use absolute pixel positions (top/left in canvas-local px),
+ * so they stay fixed in canvas space regardless of pan/zoom.
+ */
+#canvas-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform-origin: 0 0;
+    will-change: transform;
+}
+
+/* ---- Nodes ----------------------------------------------- */
 .draggable-container {
     position: absolute;
     background: var(--surface);
@@ -161,15 +251,24 @@ body {
     min-width: 260px;
 }
 
-.draggable-container:hover { border-color: var(--border-focus); box-shadow: var(--shadow-lg); }
+.draggable-container:hover {
+    border-color: var(--border-focus);
+    box-shadow: var(--shadow-lg);
+}
 .draggable-container.is-dragging {
     box-shadow: 0 20px 60px rgba(7,54,66,0.18), 0 0 0 1px var(--accent-dim);
     transform: scale(1.01);
     z-index: 100 !important;
     border-color: var(--accent-dim);
 }
-.draggable-container.connect-source { border-color: var(--accent); box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow); }
-.draggable-container.connect-target-hover { border-color: var(--accent); box-shadow: 0 0 25px var(--accent-glow); }
+.draggable-container.connect-source {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
+}
+.draggable-container.connect-target-hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 25px var(--accent-glow);
+}
 
 .draggable-container.node-enter {
     animation: nodeEnter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
@@ -179,6 +278,7 @@ body {
     to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ---- Node header ----------------------------------------- */
 .node-header {
     display: flex;
     align-items: center;
@@ -240,6 +340,7 @@ body {
 .draggable-container:hover .node-delete { opacity: 1; }
 .node-delete:hover { color: var(--danger); background: var(--danger-dim); }
 
+/* ---- Editor area ----------------------------------------- */
 .editor-wrapper {
     position: relative;
     width: 300px;
@@ -284,6 +385,7 @@ textarea:focus { background: var(--surface-2); }
 .draggable-container:not(.editing) .tex-preview { z-index: 3; pointer-events: auto; }
 .tex-preview .MathJax_Display { margin: 0.6em 0; }
 
+/* ---- Connection dots ------------------------------------- */
 .node-connect-dot {
     position: absolute;
     width: 12px;
@@ -293,7 +395,8 @@ textarea:focus { background: var(--surface-2); }
     border-radius: 50%;
     cursor: crosshair;
     z-index: 10;
-    transition: opacity 0.15s, transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    transition: opacity 0.15s, transform 0.15s, border-color 0.15s,
+                box-shadow 0.15s, background 0.15s;
     opacity: 0;
 }
 
@@ -303,7 +406,13 @@ textarea:focus { background: var(--surface-2); }
 .node-connect-dot[data-dir="right"]  { right: -7px;  top: 50%;  transform: translateY(-50%); }
 
 .draggable-container:hover .node-connect-dot { opacity: 1; }
-.node-connect-dot:hover { transform: translateX(-50%) scale(1.4); border-color: var(--accent); background: var(--accent-glow); box-shadow: 0 0 8px var(--accent-glow); }
+
+.node-connect-dot:hover {
+    transform: translateX(-50%) scale(1.4);
+    border-color: var(--accent);
+    background: var(--accent-glow);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
 .node-connect-dot[data-dir="left"]:hover  { transform: translateY(-50%) scale(1.4); }
 .node-connect-dot[data-dir="right"]:hover { transform: translateY(-50%) scale(1.4); }
 
@@ -316,7 +425,7 @@ textarea:focus { background: var(--surface-2); }
 .node-connect-dot[data-dir="top"].dot-target-hover,
 .node-connect-dot[data-dir="bottom"].dot-target-hover { transform: translateX(-50%) scale(1.6); }
 .node-connect-dot[data-dir="left"].dot-target-hover,
-.node-connect-dot[data-dir="right"].dot-target-hover { transform: translateY(-50%) scale(1.6); }
+.node-connect-dot[data-dir="right"].dot-target-hover  { transform: translateY(-50%) scale(1.6); }
 
 body.drawing-mode .node-connect-dot {
     opacity: 1;
@@ -325,9 +434,13 @@ body.drawing-mode .node-connect-dot {
     box-shadow: 0 0 8px var(--accent-glow);
 }
 body.drawing-mode .node-connect-dot[data-dir="top"],
-body.drawing-mode .node-connect-dot[data-dir="bottom"] { animation: dotPulseX 1.5s ease-in-out infinite; }
+body.drawing-mode .node-connect-dot[data-dir="bottom"] {
+    animation: dotPulseX 1.5s ease-in-out infinite;
+}
 body.drawing-mode .node-connect-dot[data-dir="left"],
-body.drawing-mode .node-connect-dot[data-dir="right"]  { animation: dotPulseY 1.5s ease-in-out infinite; }
+body.drawing-mode .node-connect-dot[data-dir="right"] {
+    animation: dotPulseY 1.5s ease-in-out infinite;
+}
 
 @keyframes dotPulseX {
     0%, 100% { transform: translateX(-50%) scale(1); }
@@ -338,18 +451,18 @@ body.drawing-mode .node-connect-dot[data-dir="right"]  { animation: dotPulseY 1.
     50%       { transform: translateY(-50%) scale(1.35); }
 }
 
-#workspace {
-    position: absolute;
-    inset: 0;
-    padding-top: 70px;
-}
-
+/* ---- SVG overlay ----------------------------------------- */
+/*
+ * The SVG is position:fixed so it always covers the viewport.
+ * Connection paths are drawn in screen-space pixels (getBoundingClientRect),
+ * so they stay aligned with nodes at any pan/zoom level.
+ */
 #svg-canvas {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
     pointer-events: none;
-    z-index: 1;
+    z-index: 500;   /* above nodes (z-index 2–100) but below toolbar (1000) */
     overflow: visible;
 }
 
@@ -379,6 +492,7 @@ body.drawing-mode .node-connect-dot[data-dir="right"]  { animation: dotPulseY 1.
 .conn-delete-btn:hover circle { fill: var(--danger-dim); stroke: var(--danger); }
 .conn-delete-btn:hover path   { stroke: var(--danger); }
 
+/* ---- Toast ----------------------------------------------- */
 .toast {
     position: fixed;
     bottom: 28px;
@@ -398,6 +512,7 @@ body.drawing-mode .node-connect-dot[data-dir="right"]  { animation: dotPulseY 1.
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ---- Scrollbar ------------------------------------------- */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }

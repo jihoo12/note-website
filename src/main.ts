@@ -3,37 +3,32 @@
 // Entry point: toolbar, keyboard shortcuts, init.
 // ============================================================
 
-// MathJax v3 browser build is configured via a global before the script loads.
-// We do NOT import mathjax-full here — it is Node.js-only and will throw
-// "require is not defined" in the browser.
-// Instead, add this to your index.html <head> BEFORE your bundle script tag:
-//
-//   <script>
-//     window.MathJax = {
-//       tex: { packages: { '[+]': ['ams', 'boldsymbol'] } },
-//       options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] },
-//       startup: { typeset: false },   // we call typesetPromise manually
-//     };
-//   </script>
-//   <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-
 import './style.css';
 import './nodeDrag';                           // side-effect: registers drag handlers
 import { showToast }          from './toast';
 import { clearAllConnections, updateAllConnections } from './connections';
 import { attachEditorEvents, onMouseMove, onMouseUp } from './node';
+import { initViewport, zoomBy, resetView, screenToCanvas } from './viewport';
 
 // ---- DOM refs -----------------------------------------------
-const workspace  = document.getElementById('workspace')       as HTMLDivElement;
-const addBtn     = document.getElementById('addTextareaBtn')  as HTMLButtonElement;
-const connectBtn = document.getElementById('toggleLineBtn')   as HTMLButtonElement;
-const connectLbl = document.getElementById('connectLabel')    as HTMLSpanElement;
-const clearBtn   = document.getElementById('clearLinesBtn')   as HTMLButtonElement;
-const statusHint = document.getElementById('statusHint')      as HTMLDivElement;
+const workspace   = document.getElementById('workspace')      as HTMLDivElement;
+const canvasLayer = document.getElementById('canvas-layer')   as HTMLDivElement;
+const addBtn      = document.getElementById('addTextareaBtn') as HTMLButtonElement;
+const connectBtn  = document.getElementById('toggleLineBtn')  as HTMLButtonElement;
+const connectLbl  = document.getElementById('connectLabel')   as HTMLSpanElement;
+const clearBtn    = document.getElementById('clearLinesBtn')  as HTMLButtonElement;
+const statusHint  = document.getElementById('statusHint')     as HTMLDivElement;
+const zoomInBtn   = document.getElementById('zoomInBtn')      as HTMLButtonElement;
+const zoomOutBtn  = document.getElementById('zoomOutBtn')     as HTMLButtonElement;
+const zoomLabel   = document.getElementById('zoomLevel')      as HTMLSpanElement;
+const resetBtn    = document.getElementById('resetViewBtn')   as HTMLButtonElement;
 
 // ---- State --------------------------------------------------
-let nodeCounter   = 3;
-let connectMode   = false;
+let nodeCounter = 3;   // Node A = 1, Node B = 2 are pre-seeded in HTML
+let connectMode = false;
+
+// ---- Init viewport (infinite canvas pan/zoom) --------------
+initViewport(canvasLayer, zoomLabel);
 
 // ---- Init default nodes ------------------------------------
 document.querySelectorAll<HTMLElement>('.draggable-container').forEach(attachEditorEvents);
@@ -50,7 +45,7 @@ function applyConnectMode(): void {
   document.body.classList.toggle('drawing-mode', connectMode);
   statusHint.textContent = connectMode
     ? "Click a node\u2019s dot to start \u00B7 Click another to connect"
-    : 'Drag handles to move \u00B7 Drag dots to connect nodes';
+    : 'Ctrl+Scroll to zoom \u00B7 Ctrl+Drag or Middle-Drag to pan \u00B7 Drag handles to move';
   statusHint.classList.toggle('alert', connectMode);
 }
 
@@ -58,6 +53,13 @@ function exitConnectMode(): void {
   connectMode = false;
   applyConnectMode();
 }
+
+// ---- Zoom controls -----------------------------------------
+zoomInBtn.addEventListener('click',  () => zoomBy(1.2));
+zoomOutBtn.addEventListener('click', () => zoomBy(1 / 1.2));
+resetBtn.addEventListener('click',   resetView);
+// Clicking the zoom percentage display also resets the view.
+zoomLabel.addEventListener('click',  resetView);
 
 // ---- Clear connections -------------------------------------
 clearBtn.addEventListener('click', () => {
@@ -69,15 +71,21 @@ clearBtn.addEventListener('click', () => {
 addBtn.addEventListener('click', addNode);
 
 function addNode(): void {
-  const container       = document.createElement('div');
-  container.className   = 'draggable-container';
-  container.style.top   = `${randomBetween(20, 55)}%`;
-  container.style.left  = `${randomBetween(20, 60)}%`;
+  const container     = document.createElement('div');
+  container.className = 'draggable-container';
+
+  // Place near the current viewport centre in canvas-local coordinates
+  // so the new node is always visible regardless of pan/zoom.
+  const cx = window.innerWidth  / 2 + randomBetween(-110, 110);
+  const cy = window.innerHeight / 2 + randomBetween(-60,   60);
+  const { x, y } = screenToCanvas(cx, cy);
+  container.style.left = `${x}px`;
+  container.style.top  = `${y}px`;
 
   const label = nodeLabel(nodeCounter++);
-  container.innerHTML   = nodeTemplate(label);
+  container.innerHTML = nodeTemplate(label);
 
-  workspace.appendChild(container);
+  canvasLayer.appendChild(container);
   container.classList.add('node-enter');
   setTimeout(() => container.classList.remove('node-enter'), 300);
 
@@ -99,14 +107,17 @@ document.addEventListener('mouseup',   (e: MouseEvent) => {
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   const tag = (e.target as HTMLElement).tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT') return;
-  if (e.key === 'n' || e.key === 'N')  addBtn.click();
-  if (e.key === 'c' || e.key === 'C')  connectBtn.click();
-  if (e.key === 'Escape')              exitConnectMode();
+
+  if (e.key === 'n' || e.key === 'N')   addBtn.click();
+  if (e.key === 'c' || e.key === 'C')   connectBtn.click();
+  if (e.key === 'Escape')               exitConnectMode();
+  if (e.key === '=' || e.key === '+')   zoomBy(1.2);
+  if (e.key === '-')                    zoomBy(1 / 1.2);
+  if (e.key === 'r' || e.key === 'R')   resetView();
 });
 
-// ---- Resize / scroll ---------------------------------------
-window.addEventListener('resize',          updateAllConnections);
-workspace.addEventListener('scroll',       updateAllConnections);
+// ---- Resize ------------------------------------------------
+window.addEventListener('resize', updateAllConnections);
 
 // ---- Helpers -----------------------------------------------
 function randomBetween(min: number, max: number): number {
@@ -150,3 +161,6 @@ function nodeTemplate(label: string): string {
     <div class="node-connect-dot" data-dir="left"></div>
   `;
 }
+
+// Suppress unused-variable warning — kept for potential future use.
+void workspace;

@@ -14,27 +14,19 @@
             tex: {
                 inlineMath:  [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
-                // MathJax 4 enables the ams and boldsymbol packages by default;
-                // no need for the '[+]' syntax used in v3.
                 packages: { '[+]': ['ams', 'boldsymbol'] },
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
             },
-            // MathJax 4: 'mathjax-modern' is the new default web font.
-            // Use 'mathjax-tex' to keep the classic Computer Modern look.
             output: {
                 font: 'mathjax-modern',
             },
             startup: {
-                // We call typesetPromise() ourselves per node, so skip the
-                // initial full-page typeset that MathJax would otherwise do.
                 typeset: false,
             },
         };
     </script>
-    <!-- tex-chtml.js is the self-contained CommonHTML browser bundle.
-         /mathjax/ is served statically by Vite (public/) in dev and build. -->
     <script src="/mathjax/es5/tex-chtml.js"></script>
 </head>
 <body>
@@ -59,10 +51,26 @@
                 Clear Lines
             </button>
         </div>
-        <div class="toolbar-hint" id="statusHint">Drag handles to move · Drag dots to connect nodes</div>
+
+        <!-- Zoom controls -->
+        <div class="zoom-controls">
+            <button class="tool-btn zoom-btn" id="zoomOutBtn" title="Zoom out (-)">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <span class="zoom-level" id="zoomLevel" title="Reset view (R)">100%</span>
+            <button class="tool-btn zoom-btn" id="zoomInBtn" title="Zoom in (+)">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <button class="tool-btn reset-view-btn" id="resetViewBtn" title="Reset view (R)">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7a5 5 0 1 1 1.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M2 11V7h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Reset
+            </button>
+        </div>
+
+        <div class="toolbar-hint" id="statusHint">Ctrl+Scroll to zoom · Ctrl+Drag or Middle-Drag to pan</div>
     </div>
 
-    <!-- SVG overlay for connection lines -->
+    <!-- SVG overlay for connection lines (fixed, outside canvas-layer) -->
     <svg id="svg-canvas">
         <defs>
             <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
@@ -80,49 +88,57 @@
         </defs>
     </svg>
 
-    <!-- Canvas workspace -->
+    <!-- Infinite canvas workspace -->
     <div id="workspace">
-        <div class="draggable-container" style="top: 28%; left: 18%;" data-label="Node A">
-            <div class="node-header">
-                <div class="drag-handle">
-                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                        <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                    </svg>
+        <!--
+            canvas-layer is the single element that receives pan/zoom transforms.
+            All nodes are appended here as direct children with pixel-based
+            top/left positions in canvas-local coordinates.
+        -->
+        <div id="canvas-layer">
+            <div class="draggable-container" style="top: 180px; left: 160px;" data-label="Node A">
+                <div class="node-header">
+                    <div class="drag-handle">
+                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                            <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <input class="node-title" type="text" value="Node A" placeholder="Label…" spellcheck="false">
+                    <button class="node-delete" title="Delete node">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
                 </div>
-                <input class="node-title" type="text" value="Node A" placeholder="Label…" spellcheck="false">
-                <button class="node-delete" title="Delete node">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                </button>
-            </div>
-            <div class="editor-wrapper">
-                <textarea placeholder="Type TeX here…&#10;e.g. $E = mc^2$"></textarea>
-                <div class="tex-preview"></div>
-            </div>
-            <div class="node-connect-dot" data-dir="top"></div>
-            <div class="node-connect-dot" data-dir="right"></div>
-            <div class="node-connect-dot" data-dir="bottom"></div>
-            <div class="node-connect-dot" data-dir="left"></div>
-        </div>
-        <div class="draggable-container" style="top: 28%; left: 58%;" data-label="Node B">
-            <div class="node-header">
-                <div class="drag-handle">
-                    <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                        <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-                    </svg>
+                <div class="editor-wrapper">
+                    <textarea placeholder="Type TeX here…&#10;e.g. $E = mc^2$"></textarea>
+                    <div class="tex-preview"></div>
                 </div>
-                <input class="node-title" type="text" value="Node B" placeholder="Label…" spellcheck="false">
-                <button class="node-delete" title="Delete node">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                </button>
+                <div class="node-connect-dot" data-dir="top"></div>
+                <div class="node-connect-dot" data-dir="right"></div>
+                <div class="node-connect-dot" data-dir="bottom"></div>
+                <div class="node-connect-dot" data-dir="left"></div>
             </div>
-            <div class="editor-wrapper">
-                <textarea placeholder="Type TeX here…&#10;e.g. $$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$"></textarea>
-                <div class="tex-preview"></div>
+
+            <div class="draggable-container" style="top: 180px; left: 560px;" data-label="Node B">
+                <div class="node-header">
+                    <div class="drag-handle">
+                        <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                            <path d="M0 1h12M0 4h12M0 7h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <input class="node-title" type="text" value="Node B" placeholder="Label…" spellcheck="false">
+                    <button class="node-delete" title="Delete node">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+                <div class="editor-wrapper">
+                    <textarea placeholder="Type TeX here…&#10;e.g. $$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$"></textarea>
+                    <div class="tex-preview"></div>
+                </div>
+                <div class="node-connect-dot" data-dir="top"></div>
+                <div class="node-connect-dot" data-dir="right"></div>
+                <div class="node-connect-dot" data-dir="bottom"></div>
+                <div class="node-connect-dot" data-dir="left"></div>
             </div>
-            <div class="node-connect-dot" data-dir="top"></div>
-            <div class="node-connect-dot" data-dir="right"></div>
-            <div class="node-connect-dot" data-dir="bottom"></div>
-            <div class="node-connect-dot" data-dir="left"></div>
         </div>
     </div>
 
