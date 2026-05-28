@@ -76,5 +76,8 @@ declare global {
       options?: object;
       output?:  object;
     };
+    Prism?: {
+      highlightAllUnder: (container: Element) => void;
+    };
   }
 }

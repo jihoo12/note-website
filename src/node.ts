@@ -44,7 +44,7 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub', // 기존 허용 태그
     'p', 'div', 'h1', 'h2', 'h3', 'ul', 'ol', 'li',       // 레이아웃 및 제목 태그 추가
     'a', 'iframe',                                  // 링크, 이미지, 아이프레임 추가
-    'code',
+    'code','pre'
   ],
 
   // 2. 허용할 속성 목록 확장
@@ -72,9 +72,16 @@ export function renderMath(container: HTMLElement): void {
   // left untouched. Sanitize before injecting into the DOM.
   preview.innerHTML = DOMPurify.sanitize(raw, PURIFY_CONFIG);
 
+  const highlight = () => {
+    if (typeof window.Prism !== 'undefined') {
+      window.Prism.highlightAllUnder(preview);   // ← call after typeset
+    }
+  };
+
   if (typeof window.MathJax?.typesetPromise === 'function') {
     // Fast path: engine already initialised.
     window.MathJax.typesetPromise([preview]).then(() => {
+      highlight();
       markConnectionsDirty(container);
       scheduleConnectionUpdate();
     });
@@ -82,6 +89,7 @@ export function renderMath(container: HTMLElement): void {
     // Slow path: wait for MathJax 4 startup promise.
     mjReady().then(() => {
       window.MathJax.typesetPromise?.([preview]).then(() => {
+        highlight();
         markConnectionsDirty(container);
         scheduleConnectionUpdate();
       });
