@@ -219,14 +219,6 @@ body.panning * { cursor: grabbing !important; }
     overflow: hidden;
 }
 
-/*
- * canvas-layer — the single element that receives pan/zoom transforms.
- * transform-origin: 0 0 means the top-left corner is the zoom pivot,
- * and viewport.ts manually adjusts panX/panY to keep the cursor fixed.
- *
- * Nodes use absolute pixel positions (top/left in canvas-local px),
- * so they stay fixed in canvas space regardless of pan/zoom.
- */
 #canvas-layer {
     position: absolute;
     top: 0;
@@ -452,17 +444,12 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
 }
 
 /* ---- SVG overlay ----------------------------------------- */
-/*
- * The SVG is position:fixed so it always covers the viewport.
- * Connection paths are drawn in screen-space pixels (getBoundingClientRect),
- * so they stay aligned with nodes at any pan/zoom level.
- */
 #svg-canvas {
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
     pointer-events: none;
-    z-index: 500;   /* above nodes (z-index 2–100) but below toolbar (1000) */
+    z-index: 500;
     overflow: visible;
 }
 
@@ -517,3 +504,146 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+
+/* ============================================================
+   TeX Board — Group styles
+   ============================================================ */
+
+/*
+ * Groups live in canvas-layer as siblings to nodes (flat DOM).
+ * z-index: 1 keeps them visually behind nodes (z-index: 2).
+ * resize: both + overflow: hidden gives native browser resize.
+ * Because nodes are NOT DOM children of the group, overflow:hidden
+ * never clips them — it only affects the group's own content (the header).
+ */
+.group-container {
+    position: absolute;
+    background: rgba(38, 139, 210, 0.04);
+    border: 2px dashed var(--accent-dim);
+    border-radius: var(--radius);
+    z-index: 1;
+    min-width: 300px;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    resize: both;
+    overflow: hidden;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.group-container:hover {
+    border-color: rgba(38, 139, 210, 0.55);
+    background: rgba(38, 139, 210, 0.07);
+}
+
+.group-container.is-dragging {
+    z-index: 50;
+    border-color: var(--accent);
+    border-style: solid;
+    box-shadow: 0 16px 48px rgba(7, 54, 66, 0.14),
+                0 0 0 1px var(--accent-dim);
+}
+
+/* Green highlight when a node is hovering over the drop zone */
+.group-container.drop-target {
+    border-color: #859900;
+    border-style: solid;
+    background: rgba(133, 153, 0, 0.06);
+    box-shadow: 0 0 28px rgba(133, 153, 0, 0.18) inset;
+}
+
+/* ---- Group header ---------------------------------------- */
+.group-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px 7px 8px;
+    border-bottom: 1px dashed rgba(38, 139, 210, 0.3);
+    border-radius: calc(var(--radius) - 2px) calc(var(--radius) - 2px) 0 0;
+    background: rgba(38, 139, 210, 0.05);
+    flex-shrink: 0;
+}
+
+.group-title {
+    flex: 1;
+    background: transparent;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    outline: none;
+    cursor: text;
+    min-width: 0;
+    transition: color 0.15s;
+}
+.group-title::placeholder { color: var(--accent-dim); }
+.group-title:focus { opacity: 1; }
+
+.group-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s, background 0.15s;
+    opacity: 0;
+}
+.group-container:hover .group-delete { opacity: 1; }
+.group-delete:hover { color: var(--danger); background: var(--danger-dim); }
+
+/* ---- Drop-zone hint text --------------------------------- */
+.group-body-hint {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    font-size: 11px;
+    color: var(--accent-dim);
+    letter-spacing: 0.4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    user-select: none;
+}
+.group-container:hover .group-body-hint { opacity: 1; }
+/* Hide hint once the group has at least one member */
+.group-container.has-members .group-body-hint { opacity: 0 !important; }
+
+/* ---- Member node accent ---------------------------------- */
+/*
+ * Nodes belonging to a group receive a subtle accent border
+ * so it's visually clear they're owned by a group even when
+ * the group isn't directly visible.
+ */
+.draggable-container[data-group-id] {
+    border-color: rgba(38, 139, 210, 0.4);
+}
+.draggable-container[data-group-id]:hover {
+    border-color: var(--accent-dim);
+}
+
+/* ---- Group button in toolbar ----------------------------- */
+.group-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: var(--accent-glow);
+}
+
+/* ---- Group enter animation ------------------------------- */
+.group-enter {
+    animation: groupEnter 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes groupEnter {
+    from { opacity: 0; transform: scale(0.93); }
+    to   { opacity: 1; transform: scale(1); }
+}

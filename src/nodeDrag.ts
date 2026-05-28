@@ -1,78 +1,183 @@
 // ============================================================
 // TeX Board — nodeDrag.ts
-// Handles moving nodes around the infinite canvas.
-// Positions are in canvas-local coordinates so that pan/zoom
-// never shifts nodes relative to the canvas.
+// Handles moving nodes AND groups around the infinite canvas.
+// Groups use a flat-DOM approach: nodes remain in canvas-layer
+// and membership is tracked logically via groups.ts.
 // ============================================================
 
 import { markConnectionsDirty, scheduleConnectionUpdate } from './connections';
 import { isDraggingConnection }                           from './node';
 import { getScale, isSpaceHeld, isCtrlHeld, isPanningNow } from './viewport';
+import { joinGroup, leaveGroup, getGroupMembers }         from './groups';
 
-// Canvas layer — nodes live inside this transformed element.
 const canvasLayer = document.getElementById('canvas-layer') as HTMLElement;
 
+/**
+ * Approximate group header height in CSS (unscaled) pixels.
+ * The body drop-zone starts below this strip.
+ */
+const HEADER_PX = 40;
+
 interface DragState {
-  node:    HTMLElement | null;
-  offsetX: number;   // screen-space offset from node's left edge at drag start
-  offsetY: number;   // screen-space offset from node's top  edge at drag start
+  el:      HTMLElement | null;
+  isGroup: boolean;
+  offsetX: number;
+  offsetY: number;
+  /** Previous canvas-local position — used to compute per-frame delta for group moves. */
+  prevX:   number;
+  prevY:   number;
 }
 
-const state: DragState = { node: null, offsetX: 0, offsetY: 0 };
+const state: DragState = {
+  el: null, isGroup: false,
+  offsetX: 0, offsetY: 0,
+  prevX:   0, prevY:   0,
+};
 
+// ── mousedown ──────────────────────────────────────────────
 document.addEventListener('mousedown', (e: MouseEvent) => {
   if (isDraggingConnection()) return;
-  if (isSpaceHeld()) return;   // space held → pan gesture, not node drag
-  if (isCtrlHeld())  return;   // ctrl  held → pan gesture, not node drag
+  if (isSpaceHeld()) return;
+  if (isCtrlHeld())  return;
 
-  const handle    = (e.target as Element).closest<HTMLElement>('.drag-handle');
-  const container = handle?.closest<HTMLElement>('.draggable-container');
-  if (!container) return;
+  const handle = (e.target as Element).closest<HTMLElement>('.drag-handle');
+  if (!handle) return;
 
-  state.node    = container;
-  const rect    = container.getBoundingClientRect();
+  // A .drag-handle can live inside a .draggable-container (node)
+  // or a .group-container (group header).  Prefer the node when both match.
+  const nodeEl  = handle.closest<HTMLElement>('.draggable-container');
+  const groupEl = handle.closest<HTMLElement>('.group-container');
+  const target  = nodeEl ?? groupEl;
+  if (!target) return;
+
+  const isGroup = !nodeEl && !!groupEl;
+
+  state.el      = target;
+  state.isGroup = isGroup;
+
+  const rect    = target.getBoundingClientRect();
   state.offsetX = e.clientX - rect.left;
   state.offsetY = e.clientY - rect.top;
+  state.prevX   = parseFloat(target.style.left) || 0;
+  state.prevY   = parseFloat(target.style.top)  || 0;
 
-  // Bring dragged node above siblings.
-  document.querySelectorAll<HTMLElement>('.draggable-container').forEach(el => {
-    el.style.zIndex = '2';
-  });
-  container.style.zIndex = '100';
-  container.classList.add('is-dragging');
+  if (isGroup) {
+    // Raise the group above siblings while dragging.
+    target.style.zIndex = '50';
+    // Raise member nodes above the group so they're still visible on top of it.
+    getGroupMembers(target).forEach(m => { m.style.zIndex = '60'; });
+  } else {
+    // Reset all nodes, then elevate the dragged one.
+    document.querySelectorAll<HTMLElement>('.draggable-container').forEach(el => {
+      el.style.zIndex = '2';
+    });
+    target.style.zIndex = '100';
+  }
+
+  target.classList.add('is-dragging');
   e.preventDefault();
 });
 
+// ── mousemove ──────────────────────────────────────────────
 document.addEventListener('mousemove', (e: MouseEvent) => {
-  const { node, offsetX, offsetY } = state;
-  if (!node) return;
+  const { el, isGroup, offsetX, offsetY } = state;
+  if (!el) return;
 
-  // If a pan gesture somehow started while dragging, abort the node drag.
   if (isPanningNow()) {
-    node.classList.remove('is-dragging');
-    state.node = null;
+    el.classList.remove('is-dragging');
+    state.el = null;
     return;
   }
 
-  // Convert the desired screen position back to canvas-local coordinates.
-  //
-  //   node.style.left = (clientX − offsetX − canvasLayer.left) / scale
-  //
-  // This keeps the grab point fixed under the cursor at any zoom level.
-  const cl = canvasLayer.getBoundingClientRect();
-  const s  = getScale();
+  const cl   = canvasLayer.getBoundingClientRect();
+  const s    = getScale();
+  const newX = (e.clientX - offsetX - cl.left) / s;
+  const newY = (e.clientY - offsetY - cl.top)  / s;
 
-  node.style.left = `${(e.clientX - offsetX - cl.left) / s}px`;
-  node.style.top  = `${(e.clientY - offsetY - cl.top)  / s}px`;
+  el.style.left = `${newX}px`;
+  el.style.top  = `${newY}px`;
 
-  // Only mark connections that involve this node as dirty — avoids
-  // the 16-BCR getBestDotPair call for unrelated connections.
-  markConnectionsDirty(node);
+  if (isGroup) {
+    // Apply the same canvas-local delta to every member node.
+    const dX = newX - state.prevX;
+    const dY = newY - state.prevY;
+    state.prevX = newX;
+    state.prevY = newY;
+    getGroupMembers(el).forEach(m => {
+      m.style.left = `${parseFloat(m.style.left) + dX}px`;
+      m.style.top  = `${parseFloat(m.style.top)  + dY}px`;
+      markConnectionsDirty(m);
+    });
+  } else {
+    markConnectionsDirty(el);
+    _updateDropHighlight(el);
+  }
   scheduleConnectionUpdate();
 });
 
+// ── mouseup ────────────────────────────────────────────────
 document.addEventListener('mouseup', () => {
-  if (!state.node) return;
-  state.node.classList.remove('is-dragging');
-  state.node = null;
+  const { el, isGroup } = state;
+  if (!el) return;
+
+  el.classList.remove('is-dragging');
+  _clearDropHighlights();
+
+  if (isGroup) {
+    el.style.zIndex = '1';
+    getGroupMembers(el).forEach(m => { m.style.zIndex = '2'; });
+  } else {
+    _resolveGroupMembership(el);
+    el.style.zIndex = '2';
+  }
+
+  Object.assign(state, { el: null, isGroup: false, prevX: 0, prevY: 0 });
 });
+
+// ── drop-target highlight ──────────────────────────────────
+
+function _updateDropHighlight(node: HTMLElement): void {
+  _clearDropHighlights();
+  const { cx, cy } = _center(node);
+  const s = getScale();
+  document.querySelectorAll<HTMLElement>('.group-container').forEach(g => {
+    const r = g.getBoundingClientRect();
+    // The drop zone is the body area below the header.
+    if (cx >= r.left && cx <= r.right &&
+        cy >= r.top + HEADER_PX * s && cy <= r.bottom) {
+      g.classList.add('drop-target');
+    }
+  });
+}
+
+function _clearDropHighlights(): void {
+  document.querySelectorAll<HTMLElement>('.group-container.drop-target')
+    .forEach(el => el.classList.remove('drop-target'));
+}
+
+// ── group membership resolution on drop ───────────────────
+
+function _resolveGroupMembership(node: HTMLElement): void {
+  const { cx, cy } = _center(node);
+  const s = getScale();
+  let target: HTMLElement | null = null;
+
+  document.querySelectorAll<HTMLElement>('.group-container').forEach(g => {
+    const r = g.getBoundingClientRect();
+    if (cx >= r.left && cx <= r.right &&
+        cy >= r.top + HEADER_PX * s && cy <= r.bottom) {
+      target = g;
+    }
+  });
+
+  if (target) {
+    joinGroup(node, target as HTMLElement);
+  } else {
+    leaveGroup(node);
+  }
+}
+
+function _center(el: HTMLElement): { cx: number; cy: number } {
+  const r = el.getBoundingClientRect();
+  return { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+}

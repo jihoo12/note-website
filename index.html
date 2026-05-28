@@ -7,8 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
 
-    <!-- MathJax v4 — served locally from node_modules via scripts/copy-mathjax.mjs.
-         The config object MUST be defined before the script tag loads. -->
+    <!-- MathJax v4 — served locally from node_modules via scripts/copy-mathjax.mjs -->
     <script>
         window.MathJax = {
             tex: {
@@ -45,6 +44,17 @@
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                 New Node
             </button>
+
+            <!-- ★ New Group button -->
+            <button class="tool-btn group-btn" id="addGroupBtn" title="Add group (G)">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                    <rect x="1" y="1" width="12" height="12" rx="2"
+                          stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+                    <path d="M1 5h12" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                New Group
+            </button>
+
             <button class="tool-btn connect-btn" id="toggleLineBtn" title="Connect nodes (C)">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="2.5" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/><circle cx="11.5" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 7h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                 <span id="connectLabel">Connect</span>
@@ -78,7 +88,7 @@
             </button>
         </div>
 
-        <!-- Status hint — referenced by main.ts via id="statusHint" -->
+        <!-- Status hint -->
         <span
             id="statusHint"
             style="
@@ -90,7 +100,6 @@
                 white-space: nowrap;
             "
         >Ctrl+Scroll to zoom · Ctrl+Drag or Middle-Drag to pan · Drag handles to move</span>
-
     </div>
 
     <!-- SVG overlay for connection lines (fixed, outside canvas-layer) -->

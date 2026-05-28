@@ -15,6 +15,7 @@ import {
   getDotPoint,
   updateLinePath,
 } from './connections';
+import { onNodeDeleted }  from './groups';
 import DOMPurify from 'dompurify';
 
 // ---- Drag-to-connect state --------------------------------
@@ -26,8 +27,6 @@ const drag: ConnectDragState = {
 };
 
 // ---- ResizeObserver registry ------------------------------
-// Stored in a WeakMap so observers are garbage-collected with their node
-// and can be explicitly disconnected on delete to prevent leaks.
 const _resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
 // ---- MathJax startup promise ------------------------------
@@ -36,23 +35,18 @@ function mjReady(): Promise<void> {
 }
 
 // ---- DOMPurify config -------------------------------------
-// Restrict to the subset of tags MathJax and basic rich text need.
-// Dropping ALLOWED_ATTR prevents any inline event-handler injection.
 const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
-  // 1. 허용할 태그 목록 확장
   ALLOWED_TAGS: [
-    'span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub', // 기존 허용 태그
-    'p', 'div', 'h1', 'h2', 'h3', 'ul', 'ol', 'li',       // 레이아웃 및 제목 태그 추가
-    'a', 'iframe',                                  // 링크, 이미지, 아이프레임 추가
+    'span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub',
+    'p', 'div', 'h1', 'h2', 'h3', 'ul', 'ol', 'li',
+    'a', 'iframe',
     'code','pre'
   ],
-
-  // 2. 허용할 속성 목록 확장
   ALLOWED_ATTR: [
-    'style', 'class',         // 기본 스타일링용 속성 허용
-    'href', 'target',         // <a> 태그용 속성 허용 (링크 주소, 새창 열기)
-    'alt', 'width',    // <img>, <iframe> 태그용 속성 허용 (소스 주소, 대체 텍스트, 가로 크기)
-    'height', 'frameborder',  // <iframe> 태그용 추가 속성a h
+    'style', 'class',
+    'href', 'target',
+    'alt', 'width',
+    'height', 'frameborder',
   ],
 };
 
@@ -68,25 +62,21 @@ export function renderMath(container: HTMLElement): void {
     return;
   }
 
-  // MathJax renders only text inside explicit delimiters; plain text is
-  // left untouched. Sanitize before injecting into the DOM.
   preview.innerHTML = DOMPurify.sanitize(raw, PURIFY_CONFIG);
 
   const highlight = () => {
     if (typeof window.Prism !== 'undefined') {
-      window.Prism.highlightAllUnder(preview);   // ← call after typeset
+      window.Prism.highlightAllUnder(preview);
     }
   };
 
   if (typeof window.MathJax?.typesetPromise === 'function') {
-    // Fast path: engine already initialised.
     window.MathJax.typesetPromise([preview]).then(() => {
       highlight();
       markConnectionsDirty(container);
       scheduleConnectionUpdate();
     });
   } else {
-    // Slow path: wait for MathJax 4 startup promise.
     mjReady().then(() => {
       window.MathJax.typesetPromise?.([preview]).then(() => {
         highlight();
@@ -119,14 +109,12 @@ export function attachEditorEvents(container: HTMLElement): void {
   const titleInput = container.querySelector<HTMLInputElement>('.node-title')!;
   const dots       = container.querySelectorAll<HTMLElement>('.node-connect-dot');
 
-  // Editing mode toggle
   textarea.addEventListener('focus', () => container.classList.add('editing'));
   textarea.addEventListener('blur',  () => {
     container.classList.remove('editing');
     renderMath(container);
   });
 
-  // Live preview while typing — debounced to avoid hammering MathJax.
   const debouncedRender = debounce(() => renderMath(container), 400);
   textarea.addEventListener('input', debouncedRender);
 
@@ -136,8 +124,6 @@ export function attachEditorEvents(container: HTMLElement): void {
     textarea.focus();
   });
 
-  // Resize → sync preview size, mark dirty, schedule redraw.
-  // The observer is stored so deleteNode() can disconnect it.
   const ro = new ResizeObserver(() => {
     syncPreviewSize(container);
     markConnectionsDirty(container);
@@ -146,16 +132,13 @@ export function attachEditorEvents(container: HTMLElement): void {
   ro.observe(textarea);
   _resizeObservers.set(container, ro);
 
-  // Delete
   deleteBtn.addEventListener('click', e => {
     e.stopPropagation();
     deleteNode(container);
   });
 
-  // Prevent title drag from bubbling to the node-drag handler
   titleInput.addEventListener('mousedown', e => e.stopPropagation());
 
-  // Connect dots — drag always active (no mode toggle required)
   dots.forEach(dot => {
     dot.addEventListener('mousedown', e => {
       e.stopPropagation();
@@ -248,10 +231,11 @@ function clearHovers(): void {
 
 // ---- Delete a node and its connections --------------------
 function deleteNode(container: HTMLElement): void {
-  // Disconnect the ResizeObserver before removing the node to prevent
-  // the callback firing on a detached element and leaking memory.
   _resizeObservers.get(container)?.disconnect();
   _resizeObservers.delete(container);
+
+  // Remove from any group membership before removing from DOM.
+  onNodeDeleted(container);
 
   removeConnectionsForNode(container);
   Object.assign(container.style, {
