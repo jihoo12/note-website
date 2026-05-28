@@ -39,8 +39,21 @@ function mjReady(): Promise<void> {
 // Restrict to the subset of tags MathJax and basic rich text need.
 // Dropping ALLOWED_ATTR prevents any inline event-handler injection.
 const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
-  ALLOWED_TAGS: ['span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub'],
-  ALLOWED_ATTR: [],
+  // 1. 허용할 태그 목록 확장
+  ALLOWED_TAGS: [
+    'span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub', // 기존 허용 태그
+    'p', 'div', 'h1', 'h2', 'h3', 'ul', 'ol', 'li',       // 레이아웃 및 제목 태그 추가
+    'a', 'iframe',                                  // 링크, 이미지, 아이프레임 추가
+    'code',
+  ],
+
+  // 2. 허용할 속성 목록 확장
+  ALLOWED_ATTR: [
+    'style', 'class',         // 기본 스타일링용 속성 허용
+    'href', 'target',         // <a> 태그용 속성 허용 (링크 주소, 새창 열기)
+    'alt', 'width',    // <img>, <iframe> 태그용 속성 허용 (소스 주소, 대체 텍스트, 가로 크기)
+    'height', 'frameborder',  // <iframe> 태그용 추가 속성a h
+  ],
 };
 
 // ---- MathJax rendering ------------------------------------
