@@ -6,9 +6,15 @@
 import './style.css';
 import './nodeDrag';                           // side-effect: registers drag handlers
 import { showToast }          from './toast';
-import { clearAllConnections, updateAllConnections } from './connections';
-import { attachEditorEvents, onMouseMove, onMouseUp } from './node';
-import { initViewport, zoomBy, resetView, screenToCanvas } from './viewport';
+import {
+  clearAllConnections,
+  updateAllConnections,
+  removeConnectionsForNode,
+  markConnectionsDirty,
+  scheduleConnectionUpdate,
+} from './connections';
+import { attachEditorEvents, attachDotEvents, onMouseMove, onMouseUp } from './node';
+import { initViewport, zoomBy, resetView, screenToCanvas, getScale } from './viewport';
 import { exportBoard, loadBoard } from './persistence';
 import { onGroupDeleted }     from './groups';
 
@@ -145,12 +151,11 @@ function addGroup(): void {
   const container     = document.createElement('div');
   container.className = 'group-container';
 
-  // Centre the group around a randomised viewport point.
   const cx = window.innerWidth  / 2 + randomBetween(-100, 100);
   const cy = window.innerHeight / 2 + randomBetween(-60,   60);
   const { x, y } = screenToCanvas(cx, cy);
-  container.style.left   = `${x - 240}px`;   // offset so the centre of the
-  container.style.top    = `${y - 160}px`;   // group lands near the cursor
+  container.style.left   = `${x - 240}px`;
+  container.style.top    = `${y - 160}px`;
   container.style.width  = '480px';
   container.style.height = '320px';
 
@@ -166,20 +171,22 @@ function addGroup(): void {
   showToast('Group created — drag nodes into it');
 }
 
-// ---- Attach events to a freshly created group --------------
+// ---- Attach all events to a freshly created group ----------
 function attachGroupEvents(container: HTMLElement): void {
   container.id = crypto.randomUUID();
 
-  const titleInput = container.querySelector<HTMLInputElement>('.group-title')!;
-  const deleteBtn  = container.querySelector<HTMLButtonElement>('.group-delete')!;
+  const titleInput    = container.querySelector<HTMLInputElement>('.group-title')!;
+  const deleteBtn     = container.querySelector<HTMLButtonElement>('.group-delete')!;
+  const resizeHandle  = container.querySelector<HTMLElement>('.group-resize-handle')!;
 
-  // Prevent title mousedown from bubbling to the drag handler in nodeDrag.ts.
+  // Prevent title clicks from bubbling to the drag handler.
   titleInput.addEventListener('mousedown', e => e.stopPropagation());
 
+  // ── Delete ──────────────────────────────────────────────
   deleteBtn.addEventListener('click', e => {
     e.stopPropagation();
-    // Remove group membership for all member nodes (keeps nodes on canvas).
-    onGroupDeleted(container);
+    onGroupDeleted(container);           // clear group membership map
+    removeConnectionsForNode(container); // remove all connections to/from the group
     Object.assign(container.style, {
       transition: 'opacity 0.2s, transform 0.2s',
       opacity:    '0',
@@ -187,6 +194,46 @@ function attachGroupEvents(container: HTMLElement): void {
     });
     setTimeout(() => container.remove(), 200);
     showToast('Group deleted');
+  });
+
+  // ── Connection dots ──────────────────────────────────────
+  // Reuse the same dot-wiring helper used by nodes.
+  attachDotEvents(container);
+
+  // ── Resize handle ────────────────────────────────────────
+  // Native CSS resize (resize:both) requires overflow:hidden, which clips the
+  // connection dots that sit -7px outside the border.  Instead we use a tiny
+  // custom handle in the bottom-right corner and implement resize in JS.
+  let resizing   = false;
+  let startX = 0, startY = 0, startW = 0, startH = 0;
+
+  resizeHandle.addEventListener('mousedown', e => {
+    e.stopPropagation();   // don't trigger node/group drag
+    e.preventDefault();
+    resizing = true;
+    startX   = e.clientX;
+    startY   = e.clientY;
+    startW   = container.offsetWidth;
+    startH   = container.offsetHeight;
+    document.body.style.cursor = 'se-resize';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!resizing) return;
+    const s  = getScale();
+    const dW = (e.clientX - startX) / s;
+    const dH = (e.clientY - startY) / s;
+    container.style.width  = `${Math.max(300, startW + dW)}px`;
+    container.style.height = `${Math.max(180, startH + dH)}px`;
+    // Dot positions change with size — mark all connections dirty.
+    markConnectionsDirty(container);
+    scheduleConnectionUpdate();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!resizing) return;
+    resizing = false;
+    document.body.style.cursor = '';
   });
 }
 
@@ -280,6 +327,19 @@ function groupTemplate(label: string): string {
       </button>
     </div>
     <div class="group-body-hint">Drop nodes here</div>
+
+    <!-- Four connection dots — same as nodes, positioned on each edge -->
+    <div class="node-connect-dot" data-dir="top"></div>
+    <div class="node-connect-dot" data-dir="right"></div>
+    <div class="node-connect-dot" data-dir="bottom"></div>
+    <div class="node-connect-dot" data-dir="left"></div>
+
+    <!-- Custom resize handle (bottom-right corner) -->
+    <div class="group-resize-handle" title="Resize group">
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+        <path d="M9 2L2 9M9 5.5L5.5 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+    </div>
   `;
 }
 

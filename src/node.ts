@@ -40,7 +40,7 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub',
     'p', 'div', 'h1', 'h2', 'h3', 'ul', 'ol', 'li',
     'a', 'iframe',
-    'code','pre'
+    'code', 'pre',
   ],
   ALLOWED_ATTR: [
     'style', 'class',
@@ -99,6 +99,22 @@ function syncPreviewSize(container: HTMLElement): void {
   }
 }
 
+// ---- Attach connection-dot events (shared by nodes & groups) ----
+/**
+ * Wires up the four .node-connect-dot elements inside `container`
+ * so that dragging from any dot starts a connection line.
+ * Called by both attachEditorEvents (nodes) and attachGroupEvents (groups).
+ */
+export function attachDotEvents(container: HTMLElement): void {
+  container.querySelectorAll<HTMLElement>('.node-connect-dot').forEach(dot => {
+    dot.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      startConnectDrag(container, e as MouseEvent, dot.dataset['dir'] as Direction);
+    });
+  });
+}
+
 // ---- Attach all events to a freshly created node ----------
 export function attachEditorEvents(container: HTMLElement): void {
   container.id = crypto.randomUUID();
@@ -107,7 +123,6 @@ export function attachEditorEvents(container: HTMLElement): void {
   const preview    = container.querySelector<HTMLDivElement>('.tex-preview')!;
   const deleteBtn  = container.querySelector<HTMLButtonElement>('.node-delete')!;
   const titleInput = container.querySelector<HTMLInputElement>('.node-title')!;
-  const dots       = container.querySelectorAll<HTMLElement>('.node-connect-dot');
 
   textarea.addEventListener('focus', () => container.classList.add('editing'));
   textarea.addEventListener('blur',  () => {
@@ -137,15 +152,11 @@ export function attachEditorEvents(container: HTMLElement): void {
     deleteNode(container);
   });
 
+  // Prevent title drag from bubbling to the node-drag handler.
   titleInput.addEventListener('mousedown', e => e.stopPropagation());
 
-  dots.forEach(dot => {
-    dot.addEventListener('mousedown', e => {
-      e.stopPropagation();
-      e.preventDefault();
-      startConnectDrag(container, e as MouseEvent, dot.dataset['dir'] as Direction);
-    });
-  });
+  // Wire the four connection dots.
+  attachDotEvents(container);
 
   renderMath(container);
 }
@@ -173,6 +184,11 @@ function startConnectDrag(
     dir, null);
 }
 
+// ---- Selector that matches any connectable container ------
+// Both .draggable-container (nodes) and .group-container (groups) can
+// be connection endpoints once they carry .node-connect-dot children.
+const CONNECTABLE = '.draggable-container, .group-container';
+
 // ---- Global mousemove (called from main.ts) ---------------
 export function onMouseMove(e: MouseEvent): void {
   if (!drag.active || !drag.line || !drag.sourceNode || !drag.sourceDir) return;
@@ -184,12 +200,16 @@ export function onMouseMove(e: MouseEvent): void {
 
   clearHovers();
   const targetDot  = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
-  const targetNode = (e.target as Element).closest<HTMLElement>('.draggable-container');
+  // Check both node and group containers as valid hover targets.
+  const targetCont = (e.target as Element).closest<HTMLElement>(CONNECTABLE);
 
-  if (targetDot && targetDot.closest('.draggable-container') !== drag.sourceNode) {
-    targetDot.classList.add('dot-target-hover');
-  } else if (targetNode && targetNode !== drag.sourceNode) {
-    targetNode.classList.add('connect-target-hover');
+  if (targetDot) {
+    const dotOwner = targetDot.closest<HTMLElement>(CONNECTABLE);
+    if (dotOwner && dotOwner !== drag.sourceNode) {
+      targetDot.classList.add('dot-target-hover');
+    }
+  } else if (targetCont && targetCont !== drag.sourceNode) {
+    targetCont.classList.add('connect-target-hover');
   }
 }
 
@@ -198,12 +218,13 @@ export function onMouseUp(e: MouseEvent): boolean {
   if (!drag.active || !drag.sourceNode) return false;
 
   const targetDot  = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
-  const targetNode = targetDot
-    ? targetDot.closest<HTMLElement>('.draggable-container')
-    : (e.target as Element).closest<HTMLElement>('.draggable-container');
+  // Resolve the container whether the user released on a dot or the body.
+  const targetCont = targetDot
+    ? targetDot.closest<HTMLElement>(CONNECTABLE)
+    : (e.target as Element).closest<HTMLElement>(CONNECTABLE);
 
-  if (targetNode && targetNode !== drag.sourceNode) {
-    finalizeConnection(drag.sourceNode, targetNode);
+  if (targetCont && targetCont !== drag.sourceNode) {
+    finalizeConnection(drag.sourceNode, targetCont);
   }
 
   cleanupDrag();
