@@ -21,6 +21,14 @@ export interface Connection {
   deleteBtn: SVGGElement;
   fromDir:   Direction;
   toDir:     Direction;
+  /**
+   * When true, the next updateAllConnections() call will re-run
+   * getBestDotPair (16 getBoundingClientRect calls).
+   * When false, the cached fromDir/toDir are reused (2 calls).
+   * Set to true whenever a connected node moves, resizes, or the
+   * viewport is panned/zoomed.
+   */
+  dirtyDots: boolean;
 }
 
 // ---- Persistence --------------------------------------------
@@ -60,10 +68,7 @@ export interface ConnectDragState {
 declare global {
   interface Window {
     MathJax: {
-      // Core typesetting API — unchanged from v3
       typesetPromise?: (nodes: Element[]) => Promise<void>;
-      // v4: startup.promise resolves once the engine is fully initialised.
-      // v3: startup.defaultReady was a mutable hook — removed in v4.
       startup?: {
         promise: Promise<void>;
       };

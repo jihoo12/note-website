@@ -4,7 +4,7 @@
 // and zoom (ctrl+scroll, +/- buttons).
 // ============================================================
 
-import { updateAllConnections } from './connections';
+import { markConnectionsDirty, scheduleConnectionUpdate } from './connections';
 
 // ---- Constants ---------------------------------------------
 const MIN_SCALE  = 0.12;
@@ -79,14 +79,18 @@ export function zoomBy(
   _panY  = cy - k * (cy - _panY);
   _scale = next;
   _applyTransform();
-  updateAllConnections();
+  // All nodes have moved in screen space — every connection needs
+  // a full dot-pair re-evaluation on the next frame.
+  markConnectionsDirty();
+  scheduleConnectionUpdate();
 }
 
 /** Snap back to 100 % zoom at the origin. */
 export function resetView(): void {
   _panX = 0; _panY = 0; _scale = 1;
   _applyTransform();
-  updateAllConnections();
+  markConnectionsDirty();
+  scheduleConnectionUpdate();
 }
 
 // ---- Internal helpers --------------------------------------
@@ -98,12 +102,8 @@ function _applyTransform(): void {
 
 // ---- Wheel zoom (Ctrl+Scroll only) -------------------------
 function _onWheel(e: WheelEvent): void {
-  // Only zoom when Ctrl is held; free scroll is left to the browser.
   if (!e.ctrlKey) return;
-  // Prevent browser's native pinch-zoom / page zoom on Ctrl+Scroll.
   e.preventDefault();
-  // Let the browser scroll textareas normally when Ctrl is NOT held
-  // (that case already returned above, so this guard is belt-and-braces).
   if ((e.target as Element).closest('textarea')) return;
   zoomBy(e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP, e.clientX, e.clientY);
 }
@@ -124,8 +124,6 @@ function _onKeyDown(e: KeyboardEvent): void {
   if (e.key === 'Control') {
     if (_ctrlHeld) return;
     _ctrlHeld = true;
-    // Only show the pan-ready cursor when Ctrl is held outside text fields,
-    // so users can still Ctrl+A / Ctrl+C inside textareas normally.
     if (tag !== 'TEXTAREA' && tag !== 'INPUT') {
       document.body.classList.add('pan-ready');
     }
@@ -142,7 +140,6 @@ function _onKeyUp(e: KeyboardEvent): void {
   if (e.key === 'Control') {
     _ctrlHeld = false;
     if (!_spaceHeld) document.body.classList.remove('pan-ready');
-    // If a pan was in progress via Ctrl+drag, end it cleanly.
     if (_panning) {
       _panning = false;
       document.body.classList.remove('panning');
@@ -156,10 +153,9 @@ function _onPanStart(e: MouseEvent): void {
   const onUI   = !!t.closest('.toolbar, .toast');
   const onDot  = !!t.closest('.node-connect-dot');
 
-  // Three ways to initiate a pan:
-  const middleBtn = e.button === 1;                        // middle-click anywhere
-  const spaceLMB  = e.button === 0 && _spaceHeld;         // Space + left-drag
-  const ctrlLMB   = e.button === 0 && _ctrlHeld && !onUI && !onDot; // Ctrl + left-drag
+  const middleBtn = e.button === 1;
+  const spaceLMB  = e.button === 0 && _spaceHeld;
+  const ctrlLMB   = e.button === 0 && _ctrlHeld && !onUI && !onDot;
 
   if (onUI || onDot) return;
   if (!middleBtn && !spaceLMB && !ctrlLMB) return;
@@ -178,7 +174,11 @@ function _onPanMove(e: MouseEvent): void {
   _panX = _anchor.sx + (e.clientX - _anchor.mx);
   _panY = _anchor.sy + (e.clientY - _anchor.my);
   _applyTransform();
-  updateAllConnections();
+  // Viewport shifted — all connections need updating.
+  // markConnectionsDirty() with no arg marks every connection.
+  // We use the RAF scheduler to coalesce rapid pan events.
+  markConnectionsDirty();
+  scheduleConnectionUpdate();
 }
 
 function _onPanEnd(): void {

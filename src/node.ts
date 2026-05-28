@@ -6,16 +6,18 @@
 import type { ConnectDragState, Direction } from './types';
 import { svgCanvas }              from './canvas';
 import { showToast }              from './toast';
+import { debounce }               from './utils';
 import {
   removeConnectionsForNode,
-  updateAllConnections,
+  scheduleConnectionUpdate,
+  markConnectionsDirty,
   finalizeConnection,
   getDotPoint,
   updateLinePath,
 } from './connections';
 import DOMPurify from 'dompurify';
 
-// ---- Drag-to-connect state (single object, easy to reset) -
+// ---- Drag-to-connect state --------------------------------
 const drag: ConnectDragState = {
   active:     false,
   line:       null,
@@ -23,15 +25,23 @@ const drag: ConnectDragState = {
   sourceDir:  null,
 };
 
-// ---- MathJax 4 startup promise ----------------------------
-// MathJax 4 guarantees window.MathJax.startup.promise resolves once the
-// engine is fully initialised and typesetPromise is available.  We capture
-// it once and reuse it for every node that tries to render before the engine
-// is ready.  In the common case (engine already ready) typesetPromise exists
-// immediately and we never even touch this promise.
+// ---- ResizeObserver registry ------------------------------
+// Stored in a WeakMap so observers are garbage-collected with their node
+// and can be explicitly disconnected on delete to prevent leaks.
+const _resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
+
+// ---- MathJax startup promise ------------------------------
 function mjReady(): Promise<void> {
   return window.MathJax?.startup?.promise ?? Promise.resolve();
 }
+
+// ---- DOMPurify config -------------------------------------
+// Restrict to the subset of tags MathJax and basic rich text need.
+// Dropping ALLOWED_ATTR prevents any inline event-handler injection.
+const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
+  ALLOWED_TAGS: ['span', 'br', 'b', 'i', 'em', 'strong', 'sup', 'sub'],
+  ALLOWED_ATTR: [],
+};
 
 // ---- MathJax rendering ------------------------------------
 export function renderMath(container: HTMLElement): void {
@@ -45,19 +55,23 @@ export function renderMath(container: HTMLElement): void {
     return;
   }
 
-  // Set content as-is. MathJax will only render text inside explicit delimiters
-  // ($…$, $$…$$, \(…\), \[…\], \begin{…}); plain text is left untouched.
-  const saferaw = DOMPurify.sanitize(raw);
-  preview.innerHTML = saferaw;
+  // MathJax renders only text inside explicit delimiters; plain text is
+  // left untouched. Sanitize before injecting into the DOM.
+  preview.innerHTML = DOMPurify.sanitize(raw, PURIFY_CONFIG);
 
   if (typeof window.MathJax?.typesetPromise === 'function') {
     // Fast path: engine already initialised.
-    window.MathJax.typesetPromise([preview]).then(updateAllConnections);
+    window.MathJax.typesetPromise([preview]).then(() => {
+      markConnectionsDirty(container);
+      scheduleConnectionUpdate();
+    });
   } else {
-    // Slow path: wait for MathJax 4's startup promise then typeset.
-    // This replaces the fragile defaultReady monkey-patch used in v3.
+    // Slow path: wait for MathJax 4 startup promise.
     mjReady().then(() => {
-      window.MathJax.typesetPromise?.([preview]).then(updateAllConnections);
+      window.MathJax.typesetPromise?.([preview]).then(() => {
+        markConnectionsDirty(container);
+        scheduleConnectionUpdate();
+      });
     });
   }
 }
@@ -91,17 +105,25 @@ export function attachEditorEvents(container: HTMLElement): void {
     renderMath(container);
   });
 
+  // Live preview while typing — debounced to avoid hammering MathJax.
+  const debouncedRender = debounce(() => renderMath(container), 400);
+  textarea.addEventListener('input', debouncedRender);
+
   preview.addEventListener('click', () => {
     if (drag.active) return;
     container.classList.add('editing');
     textarea.focus();
   });
 
-  // Resize → sync preview size and redraw connections
-  new ResizeObserver(() => {
+  // Resize → sync preview size, mark dirty, schedule redraw.
+  // The observer is stored so deleteNode() can disconnect it.
+  const ro = new ResizeObserver(() => {
     syncPreviewSize(container);
-    updateAllConnections();
-  }).observe(textarea);
+    markConnectionsDirty(container);
+    scheduleConnectionUpdate();
+  });
+  ro.observe(textarea);
+  _resizeObservers.set(container, ro);
 
   // Delete
   deleteBtn.addEventListener('click', e => {
@@ -205,6 +227,11 @@ function clearHovers(): void {
 
 // ---- Delete a node and its connections --------------------
 function deleteNode(container: HTMLElement): void {
+  // Disconnect the ResizeObserver before removing the node to prevent
+  // the callback firing on a detached element and leaking memory.
+  _resizeObservers.get(container)?.disconnect();
+  _resizeObservers.delete(container);
+
   removeConnectionsForNode(container);
   Object.assign(container.style, {
     transition: 'opacity 0.2s, transform 0.2s',

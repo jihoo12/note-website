@@ -74,7 +74,6 @@ export function loadBoard(
   canvasLayer.querySelectorAll('.draggable-container').forEach(el => el.remove());
 
   // ---- Rebuild nodes ---------------------------------------
-  // Map from saved id → new DOM element so we can re-wire connections.
   const idMap = new Map<string, HTMLElement>();
 
   for (const rec of nodeRecords) {
@@ -83,16 +82,12 @@ export function loadBoard(
     container.style.left = `${rec.x}px`;
     container.style.top  = `${rec.y}px`;
 
-    // nodeTemplate generates a fresh label string; we immediately overwrite
-    // the title input with the saved value so the label is cosmetic only.
     container.innerHTML = nodeTemplate(getNextLabel());
     canvasLayer.appendChild(container);
 
-    // Restore content before attachEditorEvents so renderMath sees the value.
-    container.querySelector<HTMLInputElement>('.node-title')!.value     = rec.title;
-    container.querySelector<HTMLTextAreaElement>('textarea')!.value     = rec.content;
+    container.querySelector<HTMLInputElement>('.node-title')!.value    = rec.title;
+    container.querySelector<HTMLTextAreaElement>('textarea')!.value    = rec.content;
 
-    // Restore explicit wrapper/preview size if it was saved.
     if (rec.width > 0 && rec.height > 0) {
       const wrapper  = container.querySelector<HTMLDivElement>('.editor-wrapper')!;
       const preview  = container.querySelector<HTMLDivElement>('.tex-preview')!;
@@ -101,8 +96,6 @@ export function loadBoard(
       wrapper.style.height  = preview.style.height  = textarea.style.height = `${rec.height}px`;
     }
 
-    // attachEditorEvents assigns a fresh UUID to container.id.
-    // We override it with the saved id so the connection map works.
     attachEditorEvents(container);
     container.id = rec.id;
     idMap.set(rec.id, container);
@@ -117,18 +110,10 @@ export function loadBoard(
     if (from && to) finalizeConnection(from, to);
   }
 
-  return null;   // success
+  return null;
 }
 
 // ---- Helpers -----------------------------------------------
-function timestamp(): string {
-  const d = new Date();
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-    '-',
-    String(d.getHours()).padStart(2, '0'),
-    String(d.getMinutes()).padStart(2, '0'),
-  ].join('');
-}
+// ISO string slice gives "YYYY-MM-DDTHH:MM" → replace separators → "YYYY-MM-DD-HHMM"
+const timestamp = (): string =>
+  new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '').replace(':', '');

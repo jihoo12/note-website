@@ -8,6 +8,36 @@ import { showToast }  from './toast';
 
 export const connections: Connection[] = [];
 
+// ---- RAF-throttled update scheduler -----------------------
+// Coalesces every updateAllConnections() request that arrives in
+// the same animation frame into a single DOM read/write pass.
+let _rafId: number | null = null;
+
+export function scheduleConnectionUpdate(): void {
+  if (_rafId !== null) return;   // already queued for this frame
+  _rafId = requestAnimationFrame(() => {
+    _rafId = null;
+    updateAllConnections();
+  });
+}
+
+// ---- Dirty-flag helpers ------------------------------------
+/**
+ * Mark the dot-pair as stale so the next updateAllConnections() call
+ * re-runs the 16-BCR getBestDotPair check.
+ *
+ * Pass a node element to mark only connections touching that node
+ * (used during node drag). Omit to mark every connection dirty
+ * (used after viewport pan/zoom).
+ */
+export function markConnectionsDirty(node?: HTMLElement): void {
+  for (const conn of connections) {
+    if (!node || conn.from === node || conn.to === node) {
+      conn.dirtyDots = true;
+    }
+  }
+}
+
 // ---- Pixel-center of a directional dot --------------------
 export function getDotPoint(container: HTMLElement, dir: Direction): Point {
   const dot = container.querySelector<HTMLElement>(`.node-connect-dot[data-dir="${dir}"]`);
@@ -48,10 +78,6 @@ export function getBestDotPair(
 }
 
 // ---- Bézier control-point for one end of the curve --------
-// `anchor`  — the dot's world position (x or y depending on axis)
-// `other`   — the opposite dot's position on the same axis
-// `dir`     — which side the dot is on
-// `t`       — tension scalar
 function controlPoint(
   dir:    Direction | null,
   anchor: Point,
@@ -84,8 +110,6 @@ export function updateLinePath(
   const start = { x: x1, y: y1 };
   const end   = { x: x2, y: y2 };
   const c1    = controlPoint(fromDir, start, end,   tension);
-  // For the end control-point we invert the "other" direction so the curve
-  // approaches from the correct side.
   const c2    = controlPoint(toDir,   end,   start, tension);
 
   lineEl.setAttribute('d',
@@ -94,11 +118,16 @@ export function updateLinePath(
 }
 
 // ---- Re-draw every connection ------------------------------
+// Uses cached fromDir/toDir when dirtyDots === false, saving up to
+// 14 getBoundingClientRect calls per connection per frame.
 export function updateAllConnections(): void {
   for (const conn of connections) {
-    const best     = getBestDotPair(conn.from, conn.to);
-    conn.fromDir   = best.fromDir;
-    conn.toDir     = best.toDir;
+    if (conn.dirtyDots) {
+      const best   = getBestDotPair(conn.from, conn.to);
+      conn.fromDir = best.fromDir;
+      conn.toDir   = best.toDir;
+      conn.dirtyDots = false;
+    }
 
     const s = getDotPoint(conn.from, conn.fromDir);
     const e = getDotPoint(conn.to,   conn.toDir);
@@ -135,8 +164,16 @@ export function finalizeConnection(
   g.addEventListener('click', () => removeConnection(path));
   svgCanvas.appendChild(g);
 
+  // We just called getBestDotPair so dirtyDots starts false.
   const best: DotPair = getBestDotPair(fromContainer, toContainer);
-  connections.push({ from: fromContainer, to: toContainer, path, deleteBtn: g, ...best });
+  connections.push({
+    from: fromContainer,
+    to:   toContainer,
+    path,
+    deleteBtn: g,
+    dirtyDots: false,
+    ...best,
+  });
   updateAllConnections();
   showToast('Nodes connected');
 }

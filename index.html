@@ -75,6 +75,19 @@
             </button>
         </div>
 
+        <!-- Status hint — referenced by main.ts via id="statusHint" -->
+        <span
+            id="statusHint"
+            style="
+                font-size: 11px;
+                color: var(--text-muted);
+                padding-left: 14px;
+                border-left: 1px solid var(--border);
+                letter-spacing: 0.2px;
+                white-space: nowrap;
+            "
+        >Ctrl+Scroll to zoom · Ctrl+Drag or Middle-Drag to pan · Drag handles to move</span>
+
     </div>
 
     <!-- SVG overlay for connection lines (fixed, outside canvas-layer) -->
@@ -97,11 +110,6 @@
 
     <!-- Infinite canvas workspace -->
     <div id="workspace">
-        <!--
-            canvas-layer is the single element that receives pan/zoom transforms.
-            All nodes are appended here as direct children with pixel-based
-            top/left positions in canvas-local coordinates.
-        -->
         <div id="canvas-layer">
             <div class="draggable-container" style="top: 180px; left: 160px;" data-label="Node A">
                 <div class="node-header">
