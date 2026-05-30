@@ -3,38 +3,44 @@
    ============================================================ */
 
 :root {
-    --bg:           #fdf6e3;
-    --surface:      #fdf6e3;
-    --surface-2:    #eee8d5;
-    --border:       #d9ceb2;
+    --bg: #fdf6e3;
+    --surface: #fdf6e3;
+    --surface-2: #eee8d5;
+    --border: #d9ceb2;
     --border-focus: #93a1a1;
-    --text:         #586e75;
-    --text-muted:   #839496;
-    --text-dim:     #b3bfbf;
-    --accent:       #268bd2;
-    --accent-dim:   #9ecfef;
-    --accent-glow:  rgba(38, 139, 210, 0.12);
-    --danger:       #dc322f;
-    --danger-dim:   rgba(220, 50, 47, 0.10);
-    --handle:       #eee8d5;
+    --text: #586e75;
+    --text-muted: #839496;
+    --text-dim: #b3bfbf;
+    --accent: #268bd2;
+    --accent-dim: #9ecfef;
+    --accent-glow: rgba(38, 139, 210, 0.12);
+    --danger: #dc322f;
+    --danger-dim: rgba(220, 50, 47, 0.10);
+    --handle: #eee8d5;
     --handle-hover: #e4dcc8;
-    --shadow-sm:    0 1px 3px rgba(7,54,66,0.08);
-    --shadow-md:    0 4px 20px rgba(7,54,66,0.10);
-    --shadow-lg:    0 8px 40px rgba(7,54,66,0.14);
-    --radius:       10px;
-    --radius-sm:    6px;
-    --font-ui:      'DM Mono', monospace;
+    --shadow-sm: 0 1px 3px rgba(7, 54, 66, 0.08);
+    --shadow-md: 0 4px 20px rgba(7, 54, 66, 0.10);
+    --shadow-lg: 0 8px 40px rgba(7, 54, 66, 0.14);
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font-ui: 'DM Mono', monospace;
     --font-display: 'Fraunces', Georgia, serif;
-    --connect-col:  #268bd2;
+    --connect-col: #268bd2;
 }
 
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
 
 body {
     background-color: var(--bg);
     background-image:
-        linear-gradient(rgba(38,139,210,0.07) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(38,139,210,0.07) 1px, transparent 1px);
+        linear-gradient(rgba(38, 139, 210, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(38, 139, 210, 0.07) 1px, transparent 1px);
     background-size: 40px 40px;
     font-family: var(--font-ui);
     color: var(--text);
@@ -44,13 +50,20 @@ body {
 }
 
 /* ---- Pan cursor states ------------------------------------ */
-body.pan-ready { cursor: grab; }
+body.pan-ready {
+    cursor: grab;
+}
+
 body.pan-ready .draggable-container,
 body.pan-ready .drag-handle,
-body.pan-ready textarea { cursor: grab; }
+body.pan-ready textarea {
+    cursor: grab;
+}
 
 body.panning,
-body.panning * { cursor: grabbing !important; }
+body.panning * {
+    cursor: grabbing !important;
+}
 
 /* ---- Toolbar --------------------------------------------- */
 .toolbar {
@@ -68,7 +81,7 @@ body.panning * { cursor: grabbing !important; }
     border-radius: 40px;
     padding: 8px 16px;
     z-index: 1000;
-    box-shadow: var(--shadow-md), 0 0 0 1px rgba(7,54,66,0.04) inset;
+    box-shadow: var(--shadow-md), 0 0 0 1px rgba(7, 54, 66, 0.04) inset;
     white-space: nowrap;
 }
 
@@ -84,7 +97,7 @@ body.panning * { cursor: grabbing !important; }
     font-size: 18px;
     color: var(--accent);
     line-height: 1;
-    filter: drop-shadow(0 0 5px rgba(38,139,210,0.4));
+    filter: drop-shadow(0 0 5px rgba(38, 139, 210, 0.4));
 }
 
 .brand-name {
@@ -94,13 +107,17 @@ body.panning * { cursor: grabbing !important; }
     color: var(--text);
     letter-spacing: -0.3px;
 }
+
 .brand-name em {
     font-style: italic;
     color: var(--accent);
     font-weight: 300;
 }
 
-.toolbar-actions { display: flex; gap: 6px; }
+.toolbar-actions {
+    display: flex;
+    gap: 6px;
+}
 
 .tool-btn {
     display: flex;
@@ -119,12 +136,16 @@ body.panning * { cursor: grabbing !important; }
     transition: all 0.18s ease;
     white-space: nowrap;
 }
+
 .tool-btn:hover {
     color: var(--text);
     border-color: var(--border-focus);
     background: var(--handle-hover);
 }
-.tool-btn svg { flex-shrink: 0; }
+
+.tool-btn svg {
+    flex-shrink: 0;
+}
 
 .create-btn:hover {
     color: var(--accent);
@@ -142,8 +163,15 @@ body.panning * { cursor: grabbing !important; }
 }
 
 @keyframes pulse-connect {
-    0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
-    50%       { box-shadow: 0 0 20px rgba(91,156,246,0.3); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(91, 156, 246, 0.3);
+    }
 }
 
 .clear-btn:hover {
@@ -180,6 +208,7 @@ body.panning * { cursor: grabbing !important; }
     font-size: 14px;
     line-height: 1;
 }
+
 .zoom-btn:hover {
     color: var(--accent);
     border-color: var(--accent-dim);
@@ -200,6 +229,7 @@ body.panning * { cursor: grabbing !important; }
     letter-spacing: 0.3px;
     border: 1px solid transparent;
 }
+
 .zoom-level:hover {
     background: var(--handle-hover);
     border-color: var(--border);
@@ -247,16 +277,19 @@ body.panning * { cursor: grabbing !important; }
     border-color: var(--border-focus);
     box-shadow: var(--shadow-lg);
 }
+
 .draggable-container.is-dragging {
-    box-shadow: 0 20px 60px rgba(7,54,66,0.18), 0 0 0 1px var(--accent-dim);
+    box-shadow: 0 20px 60px rgba(7, 54, 66, 0.18), 0 0 0 1px var(--accent-dim);
     transform: scale(1.01);
     z-index: 100 !important;
     border-color: var(--accent-dim);
 }
+
 .draggable-container.connect-source {
     border-color: var(--accent);
     box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
 }
+
 .draggable-container.connect-target-hover {
     border-color: var(--accent);
     box-shadow: 0 0 25px var(--accent-glow);
@@ -265,9 +298,17 @@ body.panning * { cursor: grabbing !important; }
 .draggable-container.node-enter {
     animation: nodeEnter 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
 @keyframes nodeEnter {
-    from { opacity: 0; transform: scale(0.85) translateY(8px); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
+    from {
+        opacity: 0;
+        transform: scale(0.85) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 /* ---- Node header ----------------------------------------- */
@@ -293,8 +334,15 @@ body.panning * { cursor: grabbing !important; }
     flex-shrink: 0;
     transition: color 0.15s, background 0.15s;
 }
-.drag-handle:hover { color: var(--text-muted); background: var(--handle-hover); }
-.drag-handle:active { cursor: grabbing; }
+
+.drag-handle:hover {
+    color: var(--text-muted);
+    background: var(--handle-hover);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
 
 .node-title {
     flex: 1;
@@ -311,8 +359,14 @@ body.panning * { cursor: grabbing !important; }
     min-width: 0;
     transition: color 0.15s;
 }
-.node-title:focus { color: var(--text); }
-.node-title::placeholder { color: var(--text-dim); }
+
+.node-title:focus {
+    color: var(--text);
+}
+
+.node-title::placeholder {
+    color: var(--text-dim);
+}
 
 .node-delete {
     display: flex;
@@ -329,8 +383,15 @@ body.panning * { cursor: grabbing !important; }
     transition: color 0.15s, background 0.15s;
     opacity: 0;
 }
-.draggable-container:hover .node-delete { opacity: 1; }
-.node-delete:hover { color: var(--danger); background: var(--danger-dim); }
+
+.draggable-container:hover .node-delete {
+    opacity: 1;
+}
+
+.node-delete:hover {
+    color: var(--danger);
+    background: var(--danger-dim);
+}
 
 /* ---- Editor area ----------------------------------------- */
 .editor-wrapper {
@@ -343,8 +404,10 @@ body.panning * { cursor: grabbing !important; }
 
 textarea {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     resize: both;
     background: transparent;
     border: none;
@@ -357,13 +420,27 @@ textarea {
     outline: none;
     caret-color: var(--accent);
 }
-textarea::placeholder { color: var(--text-dim); }
-textarea:focus { background: var(--surface-2); }
+
+textarea::placeholder {
+    color: var(--text-dim);
+}
+
+textarea:focus {
+    background: var(--surface-2);
+}
+
+.draggable-container:not(.editing) textarea {
+    opacity: 0;
+    pointer-events: none;
+}
+
 
 .tex-preview {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     padding: 12px 14px;
     background: var(--surface);
     overflow-y: auto;
@@ -374,8 +451,15 @@ textarea:focus { background: var(--surface-2); }
     line-height: 1.7;
     color: var(--text);
 }
-.draggable-container:not(.editing) .tex-preview { z-index: 3; pointer-events: auto; }
-.tex-preview .MathJax_Display { margin: 0.6em 0; }
+
+.draggable-container:not(.editing) .tex-preview {
+    z-index: 3;
+    pointer-events: auto;
+}
+
+.tex-preview .katex-display {
+    margin: 0.6em 0;
+}
 
 /* ---- Connection dots ------------------------------------- */
 /*
@@ -393,18 +477,39 @@ textarea:focus { background: var(--surface-2); }
     cursor: crosshair;
     z-index: 10;
     transition: opacity 0.15s, transform 0.15s, border-color 0.15s,
-                box-shadow 0.15s, background 0.15s;
+        box-shadow 0.15s, background 0.15s;
     opacity: 0;
 }
 
-.node-connect-dot[data-dir="top"]    { top: -7px;    left: 50%; transform: translateX(-50%); }
-.node-connect-dot[data-dir="bottom"] { bottom: -7px; left: 50%; transform: translateX(-50%); }
-.node-connect-dot[data-dir="left"]   { left: -7px;   top: 50%;  transform: translateY(-50%); }
-.node-connect-dot[data-dir="right"]  { right: -7px;  top: 50%;  transform: translateY(-50%); }
+.node-connect-dot[data-dir="top"] {
+    top: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.node-connect-dot[data-dir="bottom"] {
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.node-connect-dot[data-dir="left"] {
+    left: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.node-connect-dot[data-dir="right"] {
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+}
 
 /* Show dots on hover for both nodes and groups */
 .draggable-container:hover .node-connect-dot,
-.group-container:hover     .node-connect-dot { opacity: 1; }
+.group-container:hover .node-connect-dot {
+    opacity: 1;
+}
 
 .node-connect-dot:hover {
     transform: translateX(-50%) scale(1.4);
@@ -412,8 +517,14 @@ textarea:focus { background: var(--surface-2); }
     background: var(--accent-glow);
     box-shadow: 0 0 8px var(--accent-glow);
 }
-.node-connect-dot[data-dir="left"]:hover  { transform: translateY(-50%) scale(1.4); }
-.node-connect-dot[data-dir="right"]:hover { transform: translateY(-50%) scale(1.4); }
+
+.node-connect-dot[data-dir="left"]:hover {
+    transform: translateY(-50%) scale(1.4);
+}
+
+.node-connect-dot[data-dir="right"]:hover {
+    transform: translateY(-50%) scale(1.4);
+}
 
 .node-connect-dot.dot-target-hover {
     opacity: 1 !important;
@@ -421,10 +532,16 @@ textarea:focus { background: var(--surface-2); }
     background: rgba(133, 153, 0, 0.15);
     box-shadow: 0 0 12px rgba(133, 153, 0, 0.35);
 }
+
 .node-connect-dot[data-dir="top"].dot-target-hover,
-.node-connect-dot[data-dir="bottom"].dot-target-hover { transform: translateX(-50%) scale(1.6); }
+.node-connect-dot[data-dir="bottom"].dot-target-hover {
+    transform: translateX(-50%) scale(1.6);
+}
+
 .node-connect-dot[data-dir="left"].dot-target-hover,
-.node-connect-dot[data-dir="right"].dot-target-hover  { transform: translateY(-50%) scale(1.6); }
+.node-connect-dot[data-dir="right"].dot-target-hover {
+    transform: translateY(-50%) scale(1.6);
+}
 
 /* Drawing-mode: all dots on all containers pulse */
 body.drawing-mode .node-connect-dot {
@@ -433,29 +550,48 @@ body.drawing-mode .node-connect-dot {
     background: var(--accent-glow);
     box-shadow: 0 0 8px var(--accent-glow);
 }
+
 body.drawing-mode .node-connect-dot[data-dir="top"],
 body.drawing-mode .node-connect-dot[data-dir="bottom"] {
     animation: dotPulseX 1.5s ease-in-out infinite;
 }
+
 body.drawing-mode .node-connect-dot[data-dir="left"],
 body.drawing-mode .node-connect-dot[data-dir="right"] {
     animation: dotPulseY 1.5s ease-in-out infinite;
 }
 
 @keyframes dotPulseX {
-    0%, 100% { transform: translateX(-50%) scale(1); }
-    50%       { transform: translateX(-50%) scale(1.35); }
+
+    0%,
+    100% {
+        transform: translateX(-50%) scale(1);
+    }
+
+    50% {
+        transform: translateX(-50%) scale(1.35);
+    }
 }
+
 @keyframes dotPulseY {
-    0%, 100% { transform: translateY(-50%) scale(1); }
-    50%       { transform: translateY(-50%) scale(1.35); }
+
+    0%,
+    100% {
+        transform: translateY(-50%) scale(1);
+    }
+
+    50% {
+        transform: translateY(-50%) scale(1.35);
+    }
 }
 
 /* ---- SVG overlay ----------------------------------------- */
 #svg-canvas {
     position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: 500;
     overflow: visible;
@@ -469,7 +605,11 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     opacity: 0.7;
     transition: opacity 0.2s, stroke-width 0.2s;
 }
-.connection-path:hover { opacity: 1; stroke-width: 2.5; }
+
+.connection-path:hover {
+    opacity: 1;
+    stroke-width: 2.5;
+}
 
 .preview-path {
     stroke: var(--accent-dim);
@@ -479,13 +619,36 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     marker-end: url(#arrow-preview);
     animation: dash-flow 0.6s linear infinite;
 }
-@keyframes dash-flow { to { stroke-dashoffset: -10; } }
 
-.conn-delete-btn { cursor: pointer; pointer-events: all; transition: opacity 0.2s; }
-.conn-delete-btn circle { fill: var(--surface-2); stroke: var(--border-focus); }
-.conn-delete-btn path   { stroke: var(--text-dim); }
-.conn-delete-btn:hover circle { fill: var(--danger-dim); stroke: var(--danger); }
-.conn-delete-btn:hover path   { stroke: var(--danger); }
+@keyframes dash-flow {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+
+.conn-delete-btn {
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.2s;
+}
+
+.conn-delete-btn circle {
+    fill: var(--surface-2);
+    stroke: var(--border-focus);
+}
+
+.conn-delete-btn path {
+    stroke: var(--text-dim);
+}
+
+.conn-delete-btn:hover circle {
+    fill: var(--danger-dim);
+    stroke: var(--danger);
+}
+
+.conn-delete-btn:hover path {
+    stroke: var(--danger);
+}
 
 /* ---- Toast ----------------------------------------------- */
 .toast {
@@ -505,13 +668,30 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     transition: opacity 0.25s, transform 0.25s;
     letter-spacing: 0.3px;
 }
-.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
 
 /* ---- Scrollbar ------------------------------------------- */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-focus);
+}
 
 
 /* ============================================================
@@ -550,7 +730,7 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     border-color: var(--accent);
     border-style: solid;
     box-shadow: 0 16px 48px rgba(7, 54, 66, 0.14),
-                0 0 0 1px var(--accent-dim);
+        0 0 0 1px var(--accent-dim);
 }
 
 /* Connection states — mirrors .draggable-container behaviour */
@@ -559,6 +739,7 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     border-style: solid;
     box-shadow: var(--shadow-lg), 0 0 20px var(--accent-glow);
 }
+
 .group-container.connect-target-hover {
     border-color: var(--accent);
     border-style: solid;
@@ -600,7 +781,10 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     min-width: 0;
     transition: color 0.15s;
 }
-.group-title::placeholder { color: var(--accent-dim); }
+
+.group-title::placeholder {
+    color: var(--accent-dim);
+}
 
 .group-delete {
     display: flex;
@@ -617,8 +801,15 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     transition: color 0.15s, background 0.15s;
     opacity: 0;
 }
-.group-container:hover .group-delete { opacity: 1; }
-.group-delete:hover { color: var(--danger); background: var(--danger-dim); }
+
+.group-container:hover .group-delete {
+    opacity: 1;
+}
+
+.group-delete:hover {
+    color: var(--danger);
+    background: var(--danger-dim);
+}
 
 /* ---- Drop-zone hint text --------------------------------- */
 .group-body-hint {
@@ -634,8 +825,14 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     transition: opacity 0.2s;
     user-select: none;
 }
-.group-container:hover .group-body-hint { opacity: 1; }
-.group-container.has-members .group-body-hint { opacity: 0 !important; }
+
+.group-container:hover .group-body-hint {
+    opacity: 1;
+}
+
+.group-container.has-members .group-body-hint {
+    opacity: 0 !important;
+}
 
 /* ---- Custom resize handle -------------------------------- */
 /*
@@ -658,13 +855,20 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
     border-radius: 3px;
     z-index: 20;
 }
-.group-container:hover .group-resize-handle { opacity: 1; }
-.group-resize-handle:hover { color: var(--accent); }
+
+.group-container:hover .group-resize-handle {
+    opacity: 1;
+}
+
+.group-resize-handle:hover {
+    color: var(--accent);
+}
 
 /* ---- Member node accent ---------------------------------- */
 .draggable-container[data-group-id] {
     border-color: rgba(38, 139, 210, 0.4);
 }
+
 .draggable-container[data-group-id]:hover {
     border-color: var(--accent-dim);
 }
@@ -680,7 +884,15 @@ body.drawing-mode .node-connect-dot[data-dir="right"] {
 .group-enter {
     animation: groupEnter 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
 @keyframes groupEnter {
-    from { opacity: 0; transform: scale(0.93); }
-    to   { opacity: 1; transform: scale(1); }
+    from {
+        opacity: 0;
+        transform: scale(0.93);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }

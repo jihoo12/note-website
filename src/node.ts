@@ -4,9 +4,9 @@
 // ============================================================
 
 import type { ConnectDragState, Direction } from './types';
-import { svgCanvas }              from './canvas';
-import { showToast }              from './toast';
-import { debounce }               from './utils';
+import { svgCanvas } from './canvas';
+import { showToast } from './toast';
+import { debounce } from './utils';
 import {
   removeConnectionsForNode,
   scheduleConnectionUpdate,
@@ -15,24 +15,25 @@ import {
   getDotPoint,
   updateLinePath,
 } from './connections';
-import { onNodeDeleted }  from './groups';
+import { onNodeDeleted } from './groups';
 import DOMPurify from 'dompurify';
+import 'katex/dist/katex.min.css';
+// @ts-ignore
+import renderMathInElement from 'katex/dist/contrib/auto-render';
+
 
 // ---- Drag-to-connect state --------------------------------
 const drag: ConnectDragState = {
-  active:     false,
-  line:       null,
+  active: false,
+  line: null,
   sourceNode: null,
-  sourceDir:  null,
+  sourceDir: null,
 };
 
 // ---- ResizeObserver registry ------------------------------
 const _resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
-// ---- MathJax startup promise ------------------------------
-function mjReady(): Promise<void> {
-  return window.MathJax?.startup?.promise ?? Promise.resolve();
-}
+
 
 // ---- DOMPurify config -------------------------------------
 const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
@@ -50,11 +51,11 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
   ],
 };
 
-// ---- MathJax rendering ------------------------------------
+// ---- KaTeX rendering ------------------------------------
 export function renderMath(container: HTMLElement): void {
   const textarea = container.querySelector<HTMLTextAreaElement>('textarea')!;
-  const preview  = container.querySelector<HTMLDivElement>('.tex-preview')!;
-  const raw      = textarea.value.trim();
+  const preview = container.querySelector<HTMLDivElement>('.tex-preview')!;
+  const raw = textarea.value.trim();
 
   if (!raw) {
     preview.innerHTML =
@@ -70,31 +71,38 @@ export function renderMath(container: HTMLElement): void {
     }
   };
 
-  if (typeof window.MathJax?.typesetPromise === 'function') {
-    window.MathJax.typesetPromise([preview]).then(() => {
-      highlight();
-      markConnectionsDirty(container);
-      scheduleConnectionUpdate();
+  try {
+    renderMathInElement(preview, {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false },
+        { left: '\\(', right: '\\)', display: false },
+        { left: '\\[', right: '\\]', display: true },
+        { left: '\\begin{equation}', right: '\\end{equation}', display: true },
+        { left: '\\begin{align}', right: '\\end{align}', display: true },
+        { left: '\\begin{alignat}', right: '\\end{alignat}', display: true },
+        { left: '\\begin{gather}', right: '\\end{gather}', display: true },
+        { left: '\\begin{CD}', right: '\\end{CD}', display: true },
+
+      ],
+      throwOnError: false,
     });
-  } else {
-    mjReady().then(() => {
-      window.MathJax.typesetPromise?.([preview]).then(() => {
-        highlight();
-        markConnectionsDirty(container);
-        scheduleConnectionUpdate();
-      });
-    });
+    highlight();
+    markConnectionsDirty(container);
+    scheduleConnectionUpdate();
+  } catch (err) {
+    console.error('KaTeX rendering error:', err);
   }
 }
 
 // ---- Sync preview dimensions to the resizable textarea ----
 function syncPreviewSize(container: HTMLElement): void {
   const textarea = container.querySelector<HTMLTextAreaElement>('textarea')!;
-  const preview  = container.querySelector<HTMLDivElement>('.tex-preview')!;
-  const wrapper  = container.querySelector<HTMLDivElement>('.editor-wrapper')!;
+  const preview = container.querySelector<HTMLDivElement>('.tex-preview')!;
+  const wrapper = container.querySelector<HTMLDivElement>('.editor-wrapper')!;
   const { offsetWidth: w, offsetHeight: h } = textarea;
   if (w > 0 && h > 0) {
-    wrapper.style.width  = preview.style.width  = `${w}px`;
+    wrapper.style.width = preview.style.width = `${w}px`;
     wrapper.style.height = preview.style.height = `${h}px`;
   }
 }
@@ -119,13 +127,13 @@ export function attachDotEvents(container: HTMLElement): void {
 export function attachEditorEvents(container: HTMLElement): void {
   container.id = crypto.randomUUID();
 
-  const textarea   = container.querySelector<HTMLTextAreaElement>('textarea')!;
-  const preview    = container.querySelector<HTMLDivElement>('.tex-preview')!;
-  const deleteBtn  = container.querySelector<HTMLButtonElement>('.node-delete')!;
+  const textarea = container.querySelector<HTMLTextAreaElement>('textarea')!;
+  const preview = container.querySelector<HTMLDivElement>('.tex-preview')!;
+  const deleteBtn = container.querySelector<HTMLButtonElement>('.node-delete')!;
   const titleInput = container.querySelector<HTMLInputElement>('.node-title')!;
 
   textarea.addEventListener('focus', () => container.classList.add('editing'));
-  textarea.addEventListener('blur',  () => {
+  textarea.addEventListener('blur', () => {
     container.classList.remove('editing');
     renderMath(container);
   });
@@ -167,9 +175,9 @@ function startConnectDrag(
   e: MouseEvent,
   dir: Direction,
 ): void {
-  drag.active     = true;
+  drag.active = true;
   drag.sourceNode = container;
-  drag.sourceDir  = dir;
+  drag.sourceDir = dir;
   container.classList.add('connect-source');
   document.body.classList.add('drawing-mode');
 
@@ -199,7 +207,7 @@ export function onMouseMove(e: MouseEvent): void {
     drag.sourceDir, null);
 
   clearHovers();
-  const targetDot  = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
+  const targetDot = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
   // Check both node and group containers as valid hover targets.
   const targetCont = (e.target as Element).closest<HTMLElement>(CONNECTABLE);
 
@@ -217,7 +225,7 @@ export function onMouseMove(e: MouseEvent): void {
 export function onMouseUp(e: MouseEvent): boolean {
   if (!drag.active || !drag.sourceNode) return false;
 
-  const targetDot  = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
+  const targetDot = (e.target as Element).closest<HTMLElement>('.node-connect-dot');
   // Resolve the container whether the user released on a dot or the body.
   const targetCont = targetDot
     ? targetDot.closest<HTMLElement>(CONNECTABLE)
@@ -261,8 +269,8 @@ function deleteNode(container: HTMLElement): void {
   removeConnectionsForNode(container);
   Object.assign(container.style, {
     transition: 'opacity 0.2s, transform 0.2s',
-    opacity:    '0',
-    transform:  'scale(0.9)',
+    opacity: '0',
+    transform: 'scale(0.9)',
   });
   setTimeout(() => container.remove(), 200);
   showToast('Node deleted');

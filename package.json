@@ -4,19 +4,19 @@
   "description": "TeX Board — a visual LaTeX node editor",
   "type": "module",
   "scripts": {
-    "prepare": "node scripts/copy-mathjax.mjs",
-    "dev": "npm run prepare && vite",
-    "build": "npm run prepare && tsc && vite build",
+    "dev": "vite",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
+    "@types/katex": "^0.16.8",
     "typescript": "^5.3.3",
     "vite": "^8.0.14"
   },
   "dependencies": {
     "dompurify": "^3.4.7",
-    "mathjax": "^4.0.0"
+    "katex": "^0.17.0"
   }
 }

@@ -1,6 +1,6 @@
 # TeX Board
 
-A minimal infinite-canvas whiteboard for writing and connecting LaTeX and Code nodes. Built with TypeScript and Vite; renders math via MathJax 4.
+A minimal infinite-canvas whiteboard for writing and connecting LaTeX and Code nodes. Built with TypeScript and Vite; renders math via KaTeX.
 
 ![Solarized Light theme with two nodes connected by a Bézier curve](image.png)
 
@@ -8,7 +8,7 @@ A minimal infinite-canvas whiteboard for writing and connecting LaTeX and Code n
 
 ## Features
 
-- **LaTeX nodes** — each node has a title and a textarea. Type `$…$` or `$$…$$` (and `\(…\)`, `\[…\]`, `\begin{…}`) and the preview renders live via MathJax. Plain text is left untouched.
+- **LaTeX nodes** — each node has a title and a textarea. Type `$…$` or `$$…$$` (and `\(…\)`, `\[…\]`, `\begin{…}`) and the preview renders live via KaTeX. Plain text is left untouched.
 - **Infinite canvas** — pan and zoom freely; nodes stay fixed in canvas space at any scale.
 - **Connections** — drag from any of a node's four directional dots to another node to draw a direction-aware cubic Bézier arrow. Click the midpoint button to delete a connection.
 - **Export / Load** — save the full board to a `.json` file and restore it later, including node positions, sizes, content, and all connections.
@@ -23,10 +23,7 @@ A minimal infinite-canvas whiteboard for writing and connecting LaTeX and Code n
 # 1. Install dependencies
 npm install
 
-# 2. Copy MathJax into public/ (run once, and after npm install)
-node scripts/copy-mathjax.mjs
-
-# 3. Start the dev server
+# 2. Start the dev server
 npm run dev
 ```
 
@@ -125,6 +122,6 @@ The JSON format is stable and versioned (`"version": 1`):
 
 **Node identity.** Each node gets a UUID assigned by `attachEditorEvents` (`crypto.randomUUID()`). This UUID is the stable key used by the persistence layer to re-wire connections on load.
 
-**MathJax integration.** The config object is set on `window.MathJax` before the script loads (required by MathJax 4). `renderMath` uses a fast path (`typesetPromise` already available) or a slow path (awaits `startup.promise`) to handle rendering before and after the engine initialises. Only the preview `<div>` of the node being edited is passed to `typesetPromise`, avoiding a full-page re-render.
+**KaTeX integration.** `renderMath` uses KaTeX's `auto-render` extension to process delimiters in the node preview. Only the preview `<div>` of the node being edited is re-rendered, avoiding a full-page pass. Delimiters include standard `$…$`, `$$…$$`, `\(…\)`, and `\[…\]`.
 
 ---
