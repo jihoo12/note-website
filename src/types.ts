@@ -51,7 +51,9 @@ export interface GroupRecord {
   y: number;   // canvas-local top  px
   width: number;   // px
   height: number;   // px
+  groupId?: string; // id of the parent group, if this group is nested
 }
+
 
 /** Serialisable snapshot of one connection (node ↔ node, node ↔ group, or group ↔ group). */
 export interface ConnectionRecord {
